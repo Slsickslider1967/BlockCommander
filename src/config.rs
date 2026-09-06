@@ -1,6 +1,8 @@
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
 
+// Configuration for BlockCommander, stored in a TOML file in the user's config directory.
+
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config 
 {
@@ -34,4 +36,66 @@ pub fn save_config(config: &Config)
     }
     let contents = toml::to_string(config).expect("couldn't serialize config");
     std::fs::write(&path, contents).expect("couldn't write config file");
+}
+
+// Find the URL for a specific Minecraft version in Mojang's version manifest and download it. Returns None if the version isn't found or if the request fails.
+
+#[derive(Deserialize)]
+struct VersionManifest
+{
+    versions: Vec<VersionEntry>,
+}
+#[derive(Deserialize)]
+struct VersionEntry
+{
+    id: String,
+    url: String,
+}
+
+#[derive(Deserialize)]
+struct VersionDetail {
+    downloads: Downloads,
+}
+
+#[derive(Deserialize)]
+struct Downloads {
+    server: DownloadInfo,
+}
+
+#[derive(Deserialize)]
+struct DownloadInfo {
+    url: String,
+}
+
+pub fn find_version_url(version: &str) -> Option<String> {
+    let response = reqwest::blocking::get(
+        "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+    ).ok()?;
+
+    let manifest: VersionManifest = response.json().ok()?;
+
+    manifest.versions
+        .into_iter()
+        .find(|v| v.id == version)
+        .map(|v| v.url)
+}
+
+pub fn download_server_jar(version_url: &str, target_path: &std::path::Path) -> Result<(), String> {
+    let response = reqwest::blocking::get(version_url)
+        .map_err(|e| e.to_string())?;
+
+    let detail: VersionDetail = response.json()
+        .map_err(|e| e.to_string())?;
+
+    let jar_url = detail.downloads.server.url;
+
+    let jar_bytes = reqwest::blocking::get(&jar_url)
+        .map_err(|e| e.to_string())?
+        .bytes()
+        .map_err(|e| e.to_string())?;
+
+    std::fs::write(target_path, jar_bytes)
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
