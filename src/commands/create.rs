@@ -4,6 +4,7 @@ use crate::config::find_version_url;
 use crate::config::download_server_jar;
 use crate::config::get_dir;
 use std::fs;
+use std::path::Path;
 
 pub fn create(name: String, version: String, loader: Loader) 
 {
@@ -55,6 +56,7 @@ fn vanilla(name: String, version: String)
     if let Err(e) = download_server_jar(&version_url, &jar_path) 
     {
         println!("failed to download server jar: {}", e);
+        failsafe_remove(name, &server_path);
         return;
     }
 
@@ -85,3 +87,11 @@ fn neoforge(name: String, version: String)
 }
 
 
+fn failsafe_remove(name: String, path: &std::path::Path)
+{
+    println!("removing server folder '{}' due to previous errors...", name);
+
+    if let Err(e) = fs::remove_dir_all(path) {
+        println!("failed to remove server folder: {}", e);
+    }
+}
