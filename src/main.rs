@@ -1,7 +1,8 @@
  use clap::{Parser, Subcommand};
 
- mod config;
- mod commands;
+mod config;    // src/config.rs
+mod commands;  // src/commands/ folder, which itself declares its own submodules
+
 
  #[derive(Parser)]
  #[command(name = "BlockCommander")]
@@ -13,17 +14,19 @@
  }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
-pub(crate) enum Loader {
+pub(crate) enum Loader 
+{
     Vanilla,
     Fabric,
     Forge,
     NeoForge,
 }
 
- #[derive(Subcommand)]
- enum Commands
- {
-    Create {
+#[derive(Subcommand)]
+enum Commands
+{
+    Create 
+    {
         name: String,
         version: String,
         #[arg(long, value_enum, default_value = "vanilla")]
@@ -37,11 +40,13 @@ pub(crate) enum Loader {
         #[command(subcommand)]
         action: ConfigAction,
     }
- }
+}
 
- #[derive(Subcommand)]
-    enum ConfigAction {
-        ServersDir { dir: String },
+#[derive(Subcommand)]
+enum ConfigAction {
+    ServersDir { dir: String },
+    Port { port: u16 },
+    
 }
 
 fn main()
@@ -52,8 +57,10 @@ fn main()
     {
         Commands::Create { name, version, loader } => commands::create(name, version, loader),
         Commands::List => commands::list(),
-        Commands::Config { action } => match action {
+        Commands::Config { action } => match action 
+        {
             ConfigAction::ServersDir { dir } => commands::servers_dir(dir),
+            ConfigAction::Port { port } => commands::port(port),
         },
         Commands::Run { target } => commands::run(target),
     }
