@@ -2,6 +2,7 @@ use crate::Loader;
 use crate::config::load_config;
 use crate::config::find_version_url;
 use crate::config::download_server_jar;
+use crate::config::get_dir;
 use std::fs;
 
 pub fn create(name: String, version: String, loader: Loader) 
@@ -17,7 +18,7 @@ pub fn create(name: String, version: String, loader: Loader)
 
 fn vanilla(name: String, version: String) 
 {
-    println!("Creating vanilla server '{}' running Minecraft {}", name, version);
+    println!("creating vanilla server '{}' running Minecraft {}", name, version);
 
     let dir = match get_dir() {
         Some(d) => d,
@@ -70,31 +71,17 @@ fn vanilla(name: String, version: String)
 
 fn fabric(name: String, version: String) 
 {
-    println!("Creating fabric server '{}' running Minecraft {}", name, version);
+    println!("creating fabric server '{}' running Minecraft {}", name, version);
 }
 
 fn forge(name: String, version: String) 
 {
-    println!("Creating forge server '{}' running Minecraft {}", name, version);
+    println!("creating forge server '{}' running Minecraft {}", name, version);
 }
 
 fn neoforge(name: String, version: String)
 {
-    println!("Creating neoforge server '{}' running Minecraft {}", name, version);
+    println!("creating neoforge server '{}' running Minecraft {}", name, version);
 }
 
 
-fn get_dir() -> Option<String>
-{
-    let config = load_config();
-
-    let dir = match config.servers_dir 
-    {
-        Some(d) => d,
-        None => {
-            println!("no servers directory set — run `blockcom config servers-dir <path>` first");
-            return None;
-        }
-    };
-    Some(dir)
-}

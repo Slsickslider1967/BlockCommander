@@ -99,3 +99,19 @@ pub fn download_server_jar(version_url: &str, target_path: &std::path::Path) -> 
 
     Ok(())
 }
+
+//Get the servers directory from the config, or return None if it's not set.
+pub fn get_dir() -> Option<String>
+{
+    let config = load_config();
+
+    let dir = match config.servers_dir 
+    {
+        Some(d) => d,
+        None => {
+            println!("no servers directory set — run `blockcom config servers-dir <path>` first");
+            return None;
+        }
+    };
+    Some(dir)
+}

@@ -55,8 +55,6 @@ fn main()
         Commands::Config { action } => match action {
             ConfigAction::ServersDir { dir } => commands::servers_dir(dir),
         },
-        Commands::Run { target } => {
-            println!("Running server '{}'", target);
-        }
+        Commands::Run { target } => commands::run(target),
     }
 }
