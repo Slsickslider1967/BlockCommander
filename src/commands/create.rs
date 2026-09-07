@@ -45,6 +45,7 @@ fn vanilla(name: String, version: String)
         Some(url) => url,
         None => {
             println!("couldn't find version '{}' in Mojang's manifest", version);
+            failsafe_remove(name, &server_path);
             return;
         }
     };
@@ -65,6 +66,7 @@ fn vanilla(name: String, version: String)
     let eula_path = server_path.join("eula.txt");
     if let Err(e) = std::fs::write(&eula_path, "eula=true\n") {
         println!("failed to write eula.txt: {}", e);
+        failsafe_remove(name, &server_path);
         return;
     }
 
