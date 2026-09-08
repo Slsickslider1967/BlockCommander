@@ -4,7 +4,7 @@ use crate::config::find_version_url;
 use crate::config::download_server_jar;
 use crate::config::get_dir;
 use std::fs;
-use std::path::Path;
+use std::io::Write;
 
 pub fn create(name: String, version: String, loader: Loader) 
 {
@@ -64,12 +64,24 @@ fn vanilla(name: String, version: String)
     println!("downloaded server jar to '{}'", jar_path.display());
 
     let eula_path = server_path.join("eula.txt");
+    let mut input = String::new();
+
+    // EULA acceptance prompt with flish so y/n appears on the same line
+    print!("Do you accept the Minecraft EULA? (https://account.mojang.com/documents/minecraft_eula) (y/n): ");
+    std::io::stdout().flush().expect("Failed to flush stdout");
+    std::io::stdin().read_line(&mut input).expect("Failed to read input");
+
+    if input.trim().to_lowercase() != "y" {
+        println!("EULA not accepted. Server creation aborted.");
+        failsafe_remove(name, &server_path);
+        return;
+    }
+
     if let Err(e) = std::fs::write(&eula_path, "eula=true\n") {
         println!("failed to write eula.txt: {}", e);
         failsafe_remove(name, &server_path);
         return;
     }
-
     println!("server '{}' created successfully at '{}'", name, server_path.display());
 }
 

@@ -7,6 +7,7 @@ use std::path::PathBuf;
 pub struct Config 
 {
     pub servers_dir: Option<String>,
+    pub port: Option<u16>,
 }
 
 fn config_path() -> PathBuf 
