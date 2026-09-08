@@ -1,4 +1,3 @@
-
 use crossterm::event::PopKeyboardEnhancementFlags;
 
 use crate::config::get_dir;
@@ -7,7 +6,7 @@ use std::process::Stdio;
 use std::io::Write;
 use std::process::Command;
 
-pub fn run(name: String)
+pub fn start(name: String)
 {
     println!("Starting server '{}'", name);
  
@@ -24,15 +23,15 @@ pub fn run(name: String)
         println!("first time start up detected...");
         println!("creating server files...");
 
-        let mut cmd = run_server(&name, &server_path);
-        end_server(&mut cmd);
+        let mut cmd = start_server(&name, &server_path);
+        stop_server(&mut cmd);
         cmd.wait().expect("failed to wait on child");
 
         firsttime_server_properties(&name, &server_path);
     }
 
     
-    let mut cmd = run_server(&name, &server_path);
+    let mut cmd = start_server(&name, &server_path);
 }
 
 fn firsttime_server_properties(name: &String, server_path: &std::path::Path)
@@ -97,9 +96,9 @@ fn firsttime_server_properties(name: &String, server_path: &std::path::Path)
 
 }
 
-fn run_server(name: &String, server_path: &std::path::Path) -> std::process::Child
+pub fn start_server(name: &String, server_path: &std::path::Path) -> std::process::Child
 {
-    println!("running server '{}' from '{}'", name, server_path.display());
+    println!("starting server '{}' from '{}'", name, server_path.display());
 
     // Run the server from server.jar
     std::process::Command::new("java")
@@ -114,7 +113,7 @@ fn run_server(name: &String, server_path: &std::path::Path) -> std::process::Chi
 
 }
 
-fn end_server(cmd: &mut std::process::Child)
+fn stop_server(cmd: &mut std::process::Child)
 {
     let stdin = cmd.stdin.as_mut().expect("no stdin handle");
     stdin.write_all(b"stop\n").expect("failed to write to stdin");

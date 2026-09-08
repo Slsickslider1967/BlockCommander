@@ -1,17 +1,11 @@
-use crate::config::load_config;
+use crate::config::get_dir;
 use std::fs;
 
 pub fn list()
 {
-    let config = load_config();
-
-    let dir = match config.servers_dir 
-    {
+    let dir = match get_dir() {
         Some(d) => d,
-        None => {
-            println!("no servers directory set — run `blockcom config servers-dir <path>` first");
-            return;
-        }
+        None => return,
     };
 
     let entries = match fs::read_dir(&dir)

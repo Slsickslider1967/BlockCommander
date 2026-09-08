@@ -116,3 +116,4 @@ pub fn get_dir() -> Option<String>
     };
     Some(dir)
 }
+

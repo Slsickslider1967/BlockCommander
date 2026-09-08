@@ -1,4 +1,3 @@
-use crate::config::load_config;
 use crate::config::get_dir;
 use std::fs;
 

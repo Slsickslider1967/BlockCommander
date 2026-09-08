@@ -1,4 +1,4 @@
- use clap::{Command, Parser, Subcommand};
+use clap::{Command, Parser, Subcommand};
 
 mod config;    // src/config.rs
 mod commands;  // src/commands/ folder, which itself declares its own submodules
@@ -34,7 +34,8 @@ enum Commands
     },
     Delete { name: String },
     List,
-    Run { target: String },
+    Start { target: String },
+    StartGui { target: String },
 
     Config 
     {
@@ -49,7 +50,8 @@ enum ConfigAction {
     Port { port: u16 },
 }
 
-fn main()
+#[tokio::main]
+async fn main()
 {
     let cli = CLI::parse();
 
@@ -58,7 +60,8 @@ fn main()
         Commands::Create { name, version, loader } => commands::create(name, version, loader),
         Commands::Delete { name } => commands::delete(name),
         Commands::List => commands::list(),
-        Commands::Run { target } => commands::run(target),
+        Commands::Start { target } => commands::start(target),
+        Commands::StartGui { target } => commands::start_gui(target).await,
 
         Commands::Config { action } => match action 
         {
