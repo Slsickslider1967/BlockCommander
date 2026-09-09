@@ -57,7 +57,7 @@ async fn main()
 
     match cli.command
     {
-        Commands::Create { name, version, loader } => commands::create(name, version, loader),
+        Commands::Create { name, version, loader } => {tokio::task::spawn_blocking(move ||commands::create(name, version, loader)).await.expect("create task panicked");},
         Commands::Delete { name } => commands::delete(name),
         Commands::List => commands::list(),
         Commands::Start { target } => commands::start(target),

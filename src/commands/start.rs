@@ -18,23 +18,13 @@ pub fn start(name: String)
     let server_path: std::path::PathBuf  = std::path::Path::new(&dir).join(&name);
     let is_first_time = !server_path.join("server.properties").exists();
 
-    if is_first_time
-    {
-        println!("first time start up detected...");
-        println!("creating server files...");
-
-        let mut cmd = start_server(&name, &server_path);
-        stop_server(&mut cmd);
-        cmd.wait().expect("failed to wait on child");
-
-        firsttime_server_properties(&name, &server_path);
-    }
+    ensure_server_initialized(&name, &server_path);
 
     
     let mut cmd = start_server(&name, &server_path);
 }
 
-fn firsttime_server_properties(name: &String, server_path: &std::path::Path)
+pub fn firsttime_server_properties(name: &String, server_path: &std::path::Path)
 {
     // port configuration
     let config = crate::config::load_config();
@@ -113,8 +103,23 @@ pub fn start_server(name: &String, server_path: &std::path::Path) -> std::proces
 
 }
 
-fn stop_server(cmd: &mut std::process::Child)
+pub fn stop_server(cmd: &mut std::process::Child)
 {
     let stdin = cmd.stdin.as_mut().expect("no stdin handle");
     stdin.write_all(b"stop\n").expect("failed to write to stdin");
+}
+
+pub fn ensure_server_initialized(name: &String, server_path: &std::path::Path)
+{
+    if !server_path.join("server.properties").exists()
+    {
+        println!("first time start up detected...");
+        println!("creating server files...");
+
+        let mut cmd = start_server(name, server_path);
+        stop_server(&mut cmd);
+        cmd.wait().expect("failed to wait on child");
+
+        firsttime_server_properties(name, server_path);
+    }
 }
