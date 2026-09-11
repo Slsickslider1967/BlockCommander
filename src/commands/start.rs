@@ -94,10 +94,10 @@ pub fn start_server(name: &String, server_path: &std::path::Path) -> std::proces
     std::process::Command::new("java")
         .arg("-jar")
         .arg(server_path.join("server.jar"))
-        //.arg("nogui")
+        .arg("nogui")
         .current_dir(server_path)
         .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
+        //.stdout(Stdio::piped())
         .spawn()
         .expect("failed to start server process")
 

@@ -34,20 +34,21 @@ enum Commands
     },
     Delete { name: String },
     List,
-    Start { target: String },
-    StartGui { target: String },
 
     Config 
     {
         #[command(subcommand)]
         action: ConfigAction,
-    }
+    },
+
+    #[command(external_subcommand)]
+    Server(Vec<String>),
 }
 
 #[derive(Subcommand)]
 enum ConfigAction {
     ServersDir { dir: String },
-    Port { port: u16 },
+    DefualtPort { port: u16 },
 }
 
 #[tokio::main]
@@ -60,13 +61,39 @@ async fn main()
         Commands::Create { name, version, loader } => {tokio::task::spawn_blocking(move ||commands::create(name, version, loader)).await.expect("create task panicked");},
         Commands::Delete { name } => commands::delete(name),
         Commands::List => commands::list(),
-        Commands::Start { target } => commands::start(target),
         Commands::StartGui { target } => commands::start_gui(target).await,
-
         Commands::Config { action } => match action 
         {
             ConfigAction::ServersDir { dir } => commands::servers_dir(dir),
-            ConfigAction::Port { port } => commands::port(port),
+            ConfigAction::DefualtPort { port: defaultport } => commands::defualtport(defaultport),
         },
+
+        Commands::Server(args) => handle_server_command(args).await,
+    }
+}
+
+async fn handle_server_command(args: Vec<String>)
+{
+    if args.len() < 2 {
+        eprintln!("Usage: BlockCommander <server> <command> [input]");
+        return;
+    }
+
+    let server_name = args[0].clone();
+    let command = args[1].as_str();
+
+    match command
+    {
+        "start" => commands::start(server_name),
+        "start-gui" => commands::start_gui(server_name).await,
+        "stop" => commands::stop(server_name),
+        "rename" => {
+            if args.len() < 3 {
+                eprintln!("Usage: BlockCommander <server> rename <new-name>");
+                return;
+            }
+            commands::rename(server_name, args[2].clone());
+        }
+        _ => eprintln!("unknown server command '{}'", command),
     }
 }

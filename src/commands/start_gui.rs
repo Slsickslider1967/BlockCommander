@@ -117,9 +117,7 @@ async fn run_gui_loop
                     {
                         KeyCode::Char('q') => 
                         {
-                            println!("sending stop");
                             stdin.write_all(&b"stop\n"[..]).await.expect("failed to write to stdin");
-                            println!("stop sent");
 
                             let shutdown = tokio::time::timeout(
                                 std::time::Duration::from_secs(10),
