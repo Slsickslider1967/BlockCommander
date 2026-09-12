@@ -94,6 +94,7 @@ fn vanilla(name: String, version: String)
         version: version.clone(),
         loader: "Vanilla".to_string(),
         port: load_config().port.unwrap_or(25565),
+        rcon_port: load_config().rcon_port.unwrap_or(25575),
     };
     crate::config::save_server_info(&server_path, &server_info);  
 }

@@ -1,6 +1,4 @@
-use clap::{Command, Parser, Subcommand};
-
-use crate::{Commands::Server, config::Config};
+use clap::{Parser, Subcommand};
 
 mod config;    // src/config.rs
 mod commands;  // src/commands/ folder, which itself declares its own submodules
@@ -43,14 +41,27 @@ enum Commands
         action: ConfigAction,
     },
 
-    #[command(external_subcommand)]
-    Server(Vec<String>),
+    Server {
+        name: String,
+        #[command(subcommand)]
+        command: ServerCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum ServerCommand {
+    Start,
+    StartGui,
+    Stop,
+    Port { port: u16 },
+    RconPort { port: u16 },
 }
 
 #[derive(Subcommand)]
 enum ConfigAction {
     ServersDir { dir: String },
     DefualtPort { port: u16 },
+    DefaultRconPort { port: u16 },
     Sync,
 }
 
@@ -67,29 +78,26 @@ async fn main()
         Commands::Config { action } => match action 
         {
             ConfigAction::ServersDir { dir } => commands::servers_dir(dir),
+            ConfigAction::DefaultRconPort { port: defaultrconport } => commands::default_rcon_port(defaultrconport),
             ConfigAction::DefualtPort { port: defaultport } => commands::defualtport(defaultport),
             ConfigAction::Sync => commands::sync(),
         },
 
-        Commands::Server(args) => handle_server_command(args).await,
+        Commands::Server { name, command } => handle_server_command(name, command).await,
     }
 }
 
-async fn handle_server_command(args: Vec<String>)
+async fn handle_server_command(server_name: String, command: ServerCommand)
 {
-    if args.len() < 2 {
-        eprintln!("Usage: BlockCommander <server> <command> [input]");
-        return;
-    }
-
-    let server_name = args[0].clone();
-    let command = args[1].as_str();
-
-    match command
-    {
-        "start" => commands::start(server_name),
-        "start-gui" => commands::start_gui(server_name).await,
-        "stop" => commands::stop(server_name),
-        _ => eprintln!("unknown server command '{}'", command),
+    match command {
+        ServerCommand::Start => commands::start(server_name),
+        ServerCommand::StartGui => commands::start_gui(server_name).await,
+        ServerCommand::Stop => commands::stop(server_name),
+        ServerCommand::Port { port } => {
+            commands::change_ports(server_name, Some(port), None)
+        }
+        ServerCommand::RconPort { port } => {
+            commands::change_ports(server_name, None, Some(port))
+        }
     }
 }

@@ -1,4 +1,4 @@
-use crate::config::get_dir;
+use crate::config::*;
 use std::fs;
 
 pub fn list()
@@ -8,32 +8,16 @@ pub fn list()
         None => return,
     };
 
-    let entries = match fs::read_dir(&dir)
-    {
-        Ok(entries) => entries,
-        Err(e) => {
-            println!("couldn't read servers directory '{}': {}", dir, e);
-            return;
-        }
-    };
-
-    let mut found_any = false;
-    for entry in entries {
-        let entry = match entry {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-
-        // only show folders (each server should live in its own folder)
-        if entry.path().is_dir() {
-            if let Some(name) = entry.file_name().to_str() {
-                println!("{}", name);
-                found_any = true;
+    if let Ok(entries) = fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                let info_path = entry.path().join("server_info.toml");
+                if let Ok(contents) = fs::read_to_string(&info_path) {
+                    if let Ok(info) = toml::from_str::<ServerInfo>(&contents) {
+                        println!(" - {} (version: {}, loader: {}, port: {})", info.name, info.version, info.loader, info.port);
+                    }
+                }
             }
         }
-    }
-
-    if found_any == false {
-        println!("no servers found in '{}'", dir);
     }
 }

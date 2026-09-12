@@ -8,6 +8,7 @@ pub struct Config
 {
     pub servers_dir: Option<String>,
     pub port: Option<u16>,
+    pub rcon_port: Option<u16>,
 }
 
 fn config_path() -> PathBuf 
@@ -48,6 +49,7 @@ pub struct ServerInfo
     pub version: String,
     pub loader: String,
     pub port: u16,
+    pub rcon_port: u16,
 }
 
 #[derive(Serialize, Deserialize, Default)]

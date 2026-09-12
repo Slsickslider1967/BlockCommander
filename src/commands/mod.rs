@@ -1,15 +1,14 @@
 mod create;
 mod list;
-mod start;
+mod listactive;
 mod delete;
-mod start_gui;
 mod config;
-mod stop;
+mod server;
+
 
 pub use create::*;
 pub use list::*;
-pub use start::*;    
+pub use listactive::*;
 pub use config::*;
+pub use server::*;
 pub use delete::*;
-pub use start_gui::*;
-pub use stop::*;
