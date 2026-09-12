@@ -88,15 +88,25 @@ fn vanilla(name: String, version: String)
     println!("server '{}' created successfully at '{}'", name, server_path.display());
 
     // Add server_info file
-    let server_info = crate::config::ServerInfo 
+    let config = load_config();
+    let mut server_list = crate::config::load_server_list();
+    let base_game_port = config.port.unwrap_or(25565);
+    let game_port = crate::config::next_available_port(base_game_port, &server_list);
+    let base_rcon_port = config.rcon_port.unwrap_or(25575);
+    let rcon_port = crate::config::next_available_rcon_port(base_rcon_port, &server_list);
+
+    let server_info = crate::config::ServerInfo
     {
         name: name.clone(),
         version: version.clone(),
         loader: "Vanilla".to_string(),
-        port: load_config().port.unwrap_or(25565),
-        rcon_port: load_config().rcon_port.unwrap_or(25575),
+        port: game_port,
+        rcon_port,
+        rcon_password: config.rcon_password.unwrap_or_else(|| "defaultpassword".to_string()),
     };
-    crate::config::save_server_info(&server_path, &server_info);  
+    crate::config::save_server_info(&server_path, &server_info);
+    server_list.servers.push(server_info);
+    crate::config::save_server_list(&server_list);
 }
 
 fn fabric(name: String, version: String) 

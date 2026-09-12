@@ -2,9 +2,11 @@
 mod serverdir;
 mod port;
 mod rport;
+mod rpassword;
 mod sync;
 
 pub use serverdir::*;
 pub use port::*;   
 pub use rport::*;
+pub use rpassword::*;
 pub use sync::*;

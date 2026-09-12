@@ -9,6 +9,7 @@ pub struct Config
     pub servers_dir: Option<String>,
     pub port: Option<u16>,
     pub rcon_port: Option<u16>,
+    pub rcon_password: Option<String>,
 }
 
 fn config_path() -> PathBuf 
@@ -50,6 +51,7 @@ pub struct ServerInfo
     pub loader: String,
     pub port: u16,
     pub rcon_port: u16,
+    pub rcon_password: String,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -173,3 +175,27 @@ pub fn get_dir() -> Option<String>
     Some(dir)
 }
 
+// RCON and Game port avalability 
+pub fn next_available_port(base: u16, list: &ServerList) -> u16
+{
+    let mut candidate = base;
+    loop {
+        let taken = list.servers.iter().any(|s| s.port == candidate);
+        if !taken {
+            return candidate;
+        }
+        candidate = candidate.checked_add(1).expect("no available game port");
+    }
+}
+
+pub fn next_available_rcon_port(base: u16, list: &ServerList) -> u16
+{
+    let mut candidate = base;
+    loop {
+        let taken = list.servers.iter().any(|s| s.rcon_port == candidate);
+        if !taken {
+            return candidate;
+        }
+        candidate = candidate.checked_add(1).expect("no available RCON port");
+    }
+}

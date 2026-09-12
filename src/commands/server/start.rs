@@ -16,19 +16,27 @@ pub fn start(name: String)
         None => return,
     };
     let server_path: std::path::PathBuf  = std::path::Path::new(&dir).join(&name);
-    let is_first_time = !server_path.join("server.properties").exists();
 
     ensure_server_initialized(&name, &server_path);
-
     
     let mut cmd = start_server(&name, &server_path);
 }
 
-pub fn firsttime_server_properties(name: &String, server_path: &std::path::Path)
+pub fn first_time_server_properties(name: &String, server_path: &std::path::Path)
 {
-    // port configuration
-    let config = crate::config::load_config();
-    let port = config.port.unwrap_or(25565);
+    println!("updating server.properties for '{}'", name);
+    let info_path = server_path.join("server_info.toml");
+    let info = match std::fs::read_to_string(&info_path)
+        .ok()
+        .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok())
+    {
+        Some(info) => info,
+        None => {
+            eprintln!("Failed to read server info for '{}'.", name);
+            return;
+        }
+    };
+    let port = info.port;
 
     //Read the server.properties file
     let properties_path = server_path.join("server.properties");
@@ -45,6 +53,8 @@ pub fn firsttime_server_properties(name: &String, server_path: &std::path::Path)
     let mut updated = Vec::new();
     let mut portfound = false;
     let mut namefound = false;
+    let mut rconfound = false;
+    let mut enablefound = false;
 
     // Read through the file to fine needed changes
     for line in properties.lines()
@@ -54,6 +64,18 @@ pub fn firsttime_server_properties(name: &String, server_path: &std::path::Path)
             updated.push(format!("server-port={}", port));
             portfound = true;
         } 
+        else if line.starts_with("rcon.port=")
+        {
+            updated.push(format!("rcon.port={}", info.rcon_port));
+        }
+        else if line.starts_with("enable-rcon=")
+        {
+            updated.push("enable-rcon=true".to_string());
+        }
+        else if line.starts_with("rcon.password=")
+        {
+            updated.push(format!("rcon.password={}", info.rcon_password));
+        }
         else if line.starts_with("level-name=") 
         {
             updated.push(format!("level-name={}", name));
@@ -73,6 +95,7 @@ pub fn firsttime_server_properties(name: &String, server_path: &std::path::Path)
     {
         println!("updated server-name to {}", name);
     }
+    
 
     let new_contents = updated.join("\n");
 
@@ -97,7 +120,7 @@ pub fn start_server(name: &String, server_path: &std::path::Path) -> std::proces
         .arg("nogui")
         .current_dir(server_path)
         .stdin(Stdio::piped())
-        //.stdout(Stdio::piped())
+        .stdout(Stdio::piped())
         .spawn()
         .expect("failed to start server process")
 
@@ -120,6 +143,6 @@ pub fn ensure_server_initialized(name: &String, server_path: &std::path::Path)
         stop_server(&mut cmd);
         cmd.wait().expect("failed to wait on child");
 
-        firsttime_server_properties(name, server_path);
+        first_time_server_properties(&name, &server_path);
     }
 }
