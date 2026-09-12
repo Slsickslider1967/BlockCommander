@@ -41,6 +41,7 @@ enum Commands
     },
     Delete { name: String },
     List,
+    ListActive,
 
     Config 
     {
@@ -68,6 +69,7 @@ enum ConfigAction {
     DefualtPort { port: u16 },
     DefaultRconPort { port: u16 },
     Sync,
+    SetMaxRam { ram_mb: u32 },
 }
 
 #[tokio::main]
@@ -80,12 +82,14 @@ async fn main()
         Commands::Create { name, version, loader } => {tokio::task::spawn_blocking(move ||commands::create(name, version, loader)).await.expect("create task panicked");},
         Commands::Delete { name } => commands::delete(name),
         Commands::List => commands::list(),
+        Commands::ListActive => commands::list_active().await,
         Commands::Config { action } => match action 
         {
             ConfigAction::ServersDir { dir } => commands::servers_dir(dir),
             ConfigAction::DefaultRconPort { port: defaultrconport } => commands::default_rcon_port(defaultrconport),
             ConfigAction::DefualtPort { port: defaultport } => commands::defualtport(defaultport),
             ConfigAction::Sync => commands::sync(),
+            ConfigAction::SetMaxRam { ram_mb } => commands::set_max_ram(ram_mb),
         },
 
         Commands::Server(args) => handle_server_command(args).await,

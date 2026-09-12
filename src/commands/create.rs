@@ -103,6 +103,8 @@ fn vanilla(name: String, version: String)
         port: game_port,
         rcon_port,
         rcon_password: config.rcon_password.unwrap_or_else(|| "defaultpassword".to_string()),
+
+        max_ram_mb: config.max_ram_mb,
     };
     crate::config::save_server_info(&server_path, &server_info);
     server_list.servers.push(server_info);

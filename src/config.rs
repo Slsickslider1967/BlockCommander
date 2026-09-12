@@ -10,6 +10,9 @@ pub struct Config
     pub port: Option<u16>,
     pub rcon_port: Option<u16>,
     pub rcon_password: Option<String>,
+
+    #[serde(default)]
+    pub max_ram_mb: u32,
 }
 
 fn config_path() -> PathBuf 
@@ -50,10 +53,14 @@ pub struct ServerInfo
     pub version: String,
     pub loader: String,
     pub port: u16,
-    pub rcon_port: u16,
-    pub rcon_password: String,
-}
 
+    #[serde(default)]
+    pub rcon_port: u16,
+    #[serde(default)]
+    pub rcon_password: String,
+    #[serde(default)]
+    pub max_ram_mb: u32,
+}
 #[derive(Serialize, Deserialize, Default)]
 pub struct ServerList
 {

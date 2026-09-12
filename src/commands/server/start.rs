@@ -113,8 +113,17 @@ pub fn start_server(name: &String, server_path: &std::path::Path) -> std::proces
 {
     println!("starting server '{}' from '{}'", name, server_path.display());
 
+    let info_path = server_path.join("server_info.toml");
+    let info = std::fs::read_to_string(&info_path)
+        .ok()
+        .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok());
+
+    let max_ram = info.as_ref().map(|i| i.max_ram_mb).unwrap_or(1024);
+
     // Run the server from server.jar
     std::process::Command::new("java")
+        .arg(format!("-Xmx{}M", max_ram))
+        .arg(format!("-Xms{}M", max_ram))
         .arg("-jar")
         .arg(server_path.join("server.jar"))
         .arg("nogui")
