@@ -3,6 +3,7 @@ use crate::config::load_config;
 use crate::config::find_version_url;
 use crate::config::download_server_jar;
 use crate::config::get_dir;
+use crate::commands::config::sync;
 use std::fs;
 use std::io::Write;
 
@@ -15,6 +16,8 @@ pub fn create(name: String, version: String, loader: Loader)
         Loader::Forge => forge(name, version),
         Loader::NeoForge => neoforge(name, version),
     }
+
+    //sync();
 }
 
 fn vanilla(name: String, version: String) 
@@ -83,6 +86,16 @@ fn vanilla(name: String, version: String)
         return;
     }
     println!("server '{}' created successfully at '{}'", name, server_path.display());
+
+    // Add server_info file
+    let server_info = crate::config::ServerInfo 
+    {
+        name: name.clone(),
+        version: version.clone(),
+        loader: "Vanilla".to_string(),
+        port: load_config().port.unwrap_or(25565),
+    };
+    crate::config::save_server_info(&server_path, &server_info);  
 }
 
 fn fabric(name: String, version: String) 

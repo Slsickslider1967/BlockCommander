@@ -1,5 +1,7 @@
 use clap::{Command, Parser, Subcommand};
 
+use crate::{Commands::Server, config::Config};
+
 mod config;    // src/config.rs
 mod commands;  // src/commands/ folder, which itself declares its own submodules
 
@@ -49,6 +51,7 @@ enum Commands
 enum ConfigAction {
     ServersDir { dir: String },
     DefualtPort { port: u16 },
+    Sync,
 }
 
 #[tokio::main]
@@ -61,11 +64,11 @@ async fn main()
         Commands::Create { name, version, loader } => {tokio::task::spawn_blocking(move ||commands::create(name, version, loader)).await.expect("create task panicked");},
         Commands::Delete { name } => commands::delete(name),
         Commands::List => commands::list(),
-        Commands::StartGui { target } => commands::start_gui(target).await,
         Commands::Config { action } => match action 
         {
             ConfigAction::ServersDir { dir } => commands::servers_dir(dir),
             ConfigAction::DefualtPort { port: defaultport } => commands::defualtport(defaultport),
+            ConfigAction::Sync => commands::sync(),
         },
 
         Commands::Server(args) => handle_server_command(args).await,
@@ -87,13 +90,6 @@ async fn handle_server_command(args: Vec<String>)
         "start" => commands::start(server_name),
         "start-gui" => commands::start_gui(server_name).await,
         "stop" => commands::stop(server_name),
-        "rename" => {
-            if args.len() < 3 {
-                eprintln!("Usage: BlockCommander <server> rename <new-name>");
-                return;
-            }
-            commands::rename(server_name, args[2].clone());
-        }
         _ => eprintln!("unknown server command '{}'", command),
     }
 }

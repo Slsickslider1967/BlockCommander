@@ -15,4 +15,10 @@ pub fn delete(name: String)
     if let Err(e) = fs::remove_dir_all(path) {
         println!("failed to remove server folder: {}", e);
     }
+
+    // Remove server_info from server list
+    println!("removing server info for '{}' from server list", name);
+    let mut server_list = crate::config::load_server_list();
+    server_list.servers.retain(|s| s.name != name);
+    crate::config::save_server_list(&server_list);
 }

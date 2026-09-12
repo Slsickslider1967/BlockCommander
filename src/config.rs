@@ -13,7 +13,7 @@ pub struct Config
 fn config_path() -> PathBuf 
 {
     let mut path = dirs::config_dir().expect("couldn't find config dir");
-    path.push("blockcom");
+    path.push("BlockCommander");
     path.push("config.toml");
     path
 }
@@ -37,6 +37,60 @@ pub fn save_config(config: &Config)
     }
     let contents = toml::to_string(config).expect("couldn't serialize config");
     std::fs::write(&path, contents).expect("couldn't write config file");
+}
+
+// Configure for indavidual server (Name, Port, etc.)
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ServerInfo
+{
+    pub name: String,
+    pub version: String,
+    pub loader: String,
+    pub port: u16,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct ServerList
+{
+    pub servers: Vec<ServerInfo>,
+}
+
+pub fn save_server_list(list: &ServerList)
+{
+    let path = central_list_path();
+    if let Some(parent) = path.parent()
+    {
+        std::fs::create_dir_all(parent).expect("couldn't create config dir");
+    }
+
+    let contents = toml::to_string(list).expect("couldn't serialize server list");
+    std::fs::write(&path, contents).expect("couldn't write server list")
+}
+
+fn central_list_path() -> PathBuf
+{
+    let mut path = dirs::config_dir().expect("couldn't find config dir");
+    path.push("BlockCommander");
+    path.push("server_list.toml");
+    path
+}
+
+pub fn save_server_info(server_path: &std::path::Path, info: &ServerInfo)
+{
+    let path = server_path.join("server_info.toml");
+    let contents = toml::to_string(info).expect("couldn't serialize server info");
+    std::fs::write(&path, contents).expect("couldn't write server info");
+}
+
+pub fn load_server_list() -> ServerList
+{
+    let path = central_list_path();
+    match std::fs::read_to_string(&path)
+    {
+        Ok(contents) => toml::from_str(&contents).unwrap_or_default(),
+        Err(_) => ServerList::default(),
+    }
 }
 
 // Find the URL for a specific Minecraft version in Mojang's version manifest and download it. Returns None if the version isn't found or if the request fails.
