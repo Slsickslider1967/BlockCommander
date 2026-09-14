@@ -114,6 +114,51 @@ fn vanilla(name: String, version: String)
 fn fabric(name: String, version: String) 
 {
     println!("creating fabric server '{}' running Minecraft {}", name, version);
+
+    // Get general server path 
+        let dir = match get_dir() {
+        Some(d) => d,
+        None => return,
+    };
+
+    let server_path = std::path::Path::new(&dir).join(&name);
+    if server_path.exists()
+    {
+        println!("server '{}' already exists in '{}'", name, dir);
+        return;
+    }
+    if let Err(e) = fs::create_dir_all(&server_path) {
+        println!("failed to create server folder: {}", e);
+        return;
+    }
+
+    // Get user installed Fabric loader .jar path
+    print!("enter the faabric loader .jar directory: ");  
+    std::io::stdout().flush().expect("Failed to flush stdout");
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).expect("Failed to read input");
+    let fabric_loader_jar_path = input.trim().to_string();  
+
+    if !std::path::Path::new(&fabric_loader_jar_path).exists() 
+    {
+        println!("that file doesn't exist");
+        failsafe_remove(name, &server_path);
+        return;
+    }
+    
+    let mut child = std::process::Command::new("java")
+        .arg("-jar")
+        .arg(&fabric_loader_jar_path)
+        .arg("server")
+        .arg("-downloadMinecraft")
+        .arg("-mcversion")
+        .arg(&version)
+        .current_dir(&server_path)
+        .spawn()
+        .expect("Failed to execute Fabric installer");
+
+    child.wait().expect("failed to wait on Fabric installer");
+
 }
 
 fn forge(name: String, version: String) 

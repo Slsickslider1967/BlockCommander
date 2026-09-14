@@ -175,7 +175,7 @@ pub fn get_dir() -> Option<String>
     {
         Some(d) => d,
         None => {
-            println!("no servers directory set — run `blockcom config servers-dir <path>` first");
+            println!("no servers directory set — run `BlockCommander config servers-dir <path>` first");
             return None;
         }
     };
