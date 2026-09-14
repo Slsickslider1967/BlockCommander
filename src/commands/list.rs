@@ -3,6 +3,7 @@ use std::fs;
 
 pub fn list()
 {
+    println!("list all servers in server directory that are synced...");
     let dir = match get_dir() {
         Some(d) => d,
         None => return,

@@ -209,7 +209,8 @@ async fn run_gui_loop
     }
 }
 
-async fn draw_terminal(
+async fn draw_terminal
+(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     log_lines: &Vec<String>,
     scroll_offset: u16,

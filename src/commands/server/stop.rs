@@ -35,4 +35,6 @@ pub async fn stop(name: String)
         Ok(response) => println!("server '{}' stopped: {}", name, response),
         Err(e) => eprintln!("failed to send stop command: {}", e),
     }
+
+    println!("server '{}' stopped successfully", name);
 }

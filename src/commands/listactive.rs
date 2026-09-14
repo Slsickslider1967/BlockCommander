@@ -3,6 +3,8 @@ use tokio::net::TcpStream;
 
 pub async fn list_active()
 {
+    println!("listing all running servers that are synced...");
+
     let list = crate::config::load_server_list();
 
     if list.servers.is_empty() {

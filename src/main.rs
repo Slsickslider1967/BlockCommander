@@ -7,6 +7,31 @@ mod commands;  // src/commands/ folder, which itself declares its own submodules
  #[derive(Parser)]
  #[command(name = "BlockCommander")]
  #[command(about = "Manage Minecraft servers from the terminal")]
+ #[command(after_help = "For more information, see the documentation at https://github.com/yourusername/BlockCommander")]
+#[command(help_template = "\
+{about-with-newline}
+{usage-heading} {usage}
+
+{subcommands}
+
+Usage: BlockCommander config <SUBCOMMAND>
+
+  servers-dir <dir>         Set the folder where servers are created and stored
+  default-port <port>       Set the default port for new servers
+  default-rcon-port <port>  Set the default RCON port for new servers
+  sync                      Sync the configuration file with the current state of the servers folder
+  set-max-ram <ram_mb>      Set the maximum RAM for new servers
+
+Usage: BlockCommander <server-name> <COMMAND>
+
+  start                 Start in the background
+  start-gui             Start with the live dashboard
+  stop                  Stop the server via RCON
+  port <port>           Change the game port
+  rcon-port <port>      Change the RCON port
+  rcon-password <pass>  Change the RCON password
+
+{options}{after-help}")]
  
  struct CLI 
  {
@@ -15,9 +40,10 @@ mod commands;  // src/commands/ folder, which itself declares its own submodules
  }
 
  #[derive(Parser)]
-struct ServerCli {
+struct ServerCli 
+{
     #[command(subcommand)]
-    command: ServerCommand,
+    command: ServerCommands,
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
@@ -32,6 +58,7 @@ pub(crate) enum Loader
 #[derive(Subcommand)]
 enum Commands
 {
+    /// create <name> <version> [--loader <loader>]
     Create 
     {
         name: String,
@@ -39,22 +66,28 @@ enum Commands
         #[arg(long, value_enum, default_value = "vanilla")]
         loader: Loader,
     },
+    /// Delete <name>
     Delete { name: String },
+    /// List all servers.
     List,
+    /// List all active servers.
     ListActive,
 
+    /// Configure BlockCommander settings.
     Config 
     {
         #[command(subcommand)]
         action: ConfigAction,
     },
 
+    /// Run a command on a server. The first argument is the server name, followed by the command and its arguments.
     #[command(external_subcommand)]
     Server(Vec<String>),
 }
 
 #[derive(Subcommand)]
-enum ServerCommand {
+enum ServerCommands
+{
     Start,
     StartGui,
     Stop,
@@ -64,11 +97,17 @@ enum ServerCommand {
 }
 
 #[derive(Subcommand)]
-enum ConfigAction {
+enum ConfigAction 
+{
+    /// Set the folder where servers are created and stored
     ServersDir { dir: String },
+    /// Set the default port for new servers
     DefualtPort { port: u16 },
+    /// Set the default RCON port for new servers
     DefaultRconPort { port: u16 },
+    /// Sync the configuration file with the current state of the servers folder
     Sync,
+    /// Set the maximum RAM for new servers
     SetMaxRam { ram_mb: u32 },
 }
 
@@ -98,7 +137,8 @@ async fn main()
 
 async fn handle_server_command(args: Vec<String>)
 {
-    if args.is_empty() {
+    if args.is_empty() 
+    {
         eprintln!("Usage: BlockCommander <server-name> <command> [args]");
         return;
     }
@@ -118,12 +158,13 @@ async fn handle_server_command(args: Vec<String>)
         }
     };
 
-    match parsed.command {
-        ServerCommand::Start => commands::start(server_name),
-        ServerCommand::StartGui => commands::start_gui(server_name).await,
-        ServerCommand::Stop => commands::stop(server_name).await,
-        ServerCommand::Port { port } => commands::change_ports(server_name, Some(port), None),
-        ServerCommand::RconPort { port } => commands::change_ports(server_name, None, Some(port)),
-        ServerCommand::RconPassword { password } => commands::change_rcon_password(server_name, password),
+    match parsed.command 
+    {
+        ServerCommands::Start => commands::start(server_name),
+        ServerCommands::StartGui => commands::start_gui(server_name).await,
+        ServerCommands::Stop => commands::stop(server_name).await,
+        ServerCommands::Port { port } => commands::change_ports(server_name, Some(port), None),
+        ServerCommands::RconPort { port } => commands::change_ports(server_name, None, Some(port)),
+        ServerCommands::RconPassword { password } => commands::change_rcon_password(server_name, password),
     }
 }
