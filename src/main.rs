@@ -165,6 +165,6 @@ async fn handle_server_command(args: Vec<String>)
         ServerCommands::Stop => commands::stop(server_name).await,
         ServerCommands::Port { port } => commands::change_ports(server_name, Some(port), None),
         ServerCommands::RconPort { port } => commands::change_ports(server_name, None, Some(port)),
-        ServerCommands::RconPassword { password } => commands::change_rcon_password(server_name, password),
+        ServerCommands::RconPassword { password } => commands::change_rcon_password(password),
     }
 }

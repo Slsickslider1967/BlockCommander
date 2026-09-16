@@ -1,5 +1,6 @@
 use rcon::Connection;
 use tokio::net::TcpStream;
+use local_ip_address::local_ip;
 
 pub async fn stop(name: String)
 {
@@ -16,7 +17,9 @@ pub async fn stop(name: String)
 
     println!("stopping server '{}' with RCON, port '{}'", name, info.rcon_port);
 
-    let address = format!("127.0.0.1:{}", info.rcon_port);
+    let my_local_ip = local_ip().unwrap();
+    println!("local IP address: {}", my_local_ip);
+    let address = format!("{}:{}", my_local_ip, info.rcon_port);
 
     let mut conn = match Connection::<TcpStream>::builder()
         .enable_minecraft_quirks(true)
@@ -24,7 +27,8 @@ pub async fn stop(name: String)
         .await
     {
         Ok(c) => c,
-        Err(e) => {
+        Err(e) => 
+        {
             eprintln!("failed to connect to '{}' via RCON: {}", name, e);
             return;
         }

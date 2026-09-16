@@ -1,10 +1,6 @@
-use crossterm::event::PopKeyboardEnhancementFlags;
-
 use crate::config::get_dir;
-use crate::config;
 use std::process::Stdio;
 use std::io::Write;
-use std::process::Command;
 
 pub fn start(name: String)
 {
@@ -40,7 +36,7 @@ pub fn first_time_server_properties(name: &String, server_path: &std::path::Path
 
     //Read the server.properties file
     let properties_path = server_path.join("server.properties");
-    let mut properties = 
+    let properties = 
         match std::fs::read_to_string(&properties_path)
         {
             Ok(p) => p,
@@ -53,8 +49,8 @@ pub fn first_time_server_properties(name: &String, server_path: &std::path::Path
     let mut updated = Vec::new();
     let mut portfound = false;
     let mut namefound = false;
-    let mut rconfound = false;
-    let mut enablefound = false;
+    // let mut rconfound = false;
+    // let mut enablefound = false;
 
     // Read through the file to fine needed changes
     for line in properties.lines()
