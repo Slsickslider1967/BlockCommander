@@ -19,7 +19,8 @@ pub async fn stop(name: String)
 
     let my_local_ip = local_ip().unwrap();
     println!("local IP address: {}", my_local_ip);
-    let address = format!("{}:{}", my_local_ip, info.rcon_port);
+    let address = format!("127.0.0.1:{}", info.rcon_port);
+
 
     let mut conn = match Connection::<TcpStream>::builder()
         .enable_minecraft_quirks(true)
