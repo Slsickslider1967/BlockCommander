@@ -14,6 +14,7 @@ pub fn delete(name: String)
 
     if let Err(e) = fs::remove_dir_all(path) {
         println!("failed to remove server folder: {}", e);
+        return;
     }
 
     // Remove server_info from server list
