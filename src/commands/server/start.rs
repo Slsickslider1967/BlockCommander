@@ -1,6 +1,8 @@
-use crate::config::get_dir;
+use crate::config::{get_dir, ServerInfo};
 use std::process::Stdio;
 use std::io::Write;
+use std::ptr::null;
+use clap::Command;
 
 pub fn start(name: String)
 {
@@ -13,9 +15,23 @@ pub fn start(name: String)
     };
     let server_path: std::path::PathBuf  = std::path::Path::new(&dir).join(&name);
 
+    let info_path = server_path.join("server_info.toml");
+    let info = match std::fs::read_to_string(&info_path)
+        .ok()
+        .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok())
+    {
+        Some(info) => info,
+        None => {
+            eprintln!("Failed to read server info for '{}'.", name);
+            return;
+        }
+    };
+
     ensure_server_initialized(&name, &server_path);
     
-    let mut cmd = start_server(&name, &server_path);
+    let mut cmd = start_server(&name, &server_path, &info.loader);
+
+    println!("Server started at {}", &name);
 }
 
 pub fn first_time_server_properties(name: &String, server_path: &std::path::Path)
@@ -55,7 +71,7 @@ pub fn first_time_server_properties(name: &String, server_path: &std::path::Path
     // Read through the file to fine needed changes
     for line in properties.lines()
     {
-        if line.starts_with("server-port=") 
+        if line.starts_with("server-port=")
         {
             updated.push(format!("server-port={}", port));
             portfound = true;
@@ -72,7 +88,7 @@ pub fn first_time_server_properties(name: &String, server_path: &std::path::Path
         {
             updated.push(format!("rcon.password={}", info.rcon_password));
         }
-        else if line.starts_with("level-name=") 
+        else if line.starts_with("level-name=")
         {
             updated.push(format!("level-name={}", name));
             namefound = true;
@@ -105,7 +121,7 @@ pub fn first_time_server_properties(name: &String, server_path: &std::path::Path
 
 }
 
-pub fn start_server(name: &String, server_path: &std::path::Path) -> std::process::Child
+pub fn start_server(name: &String, server_path: &std::path::Path, loader: &String) -> std::process::Child
 {
     println!("starting server '{}' from '{}'", name, server_path.display());
 
@@ -115,36 +131,93 @@ pub fn start_server(name: &String, server_path: &std::path::Path) -> std::proces
         .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok());
 
     let max_ram = info.as_ref().map(|i| i.max_ram_mb).unwrap_or(1024);
+    let mut jar_File_Name = "";
+
+    if (loader == "Vanilla")
+    {
+        jar_File_Name = "server.jar";
+    }
+    if (loader == "Fabric")
+    {
+        jar_File_Name = "fabric-server-launch.jar";;
+    }
+
 
     // Run the server from server.jar
     std::process::Command::new("java")
         .arg(format!("-Xmx{}M", max_ram))
         .arg(format!("-Xms{}M", max_ram))
         .arg("-jar")
-        .arg(server_path.join("server.jar"))
+        .arg(server_path.join(jar_File_Name))
         .arg("nogui")
         .current_dir(server_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
         .expect("failed to start server process")
-
 }
 
 pub fn stop_server(cmd: &mut std::process::Child)
 {
     let stdin = cmd.stdin.as_mut().expect("no stdin handle");
     stdin.write_all(b"stop\n").expect("failed to write to stdin");
+
+    println!("please do not touch the console, if nothing happens in over a minute, then reset...");
 }
 
 pub fn ensure_server_initialized(name: &String, server_path: &std::path::Path)
 {
-    if !server_path.join("server.properties").exists()
+    let info_path = server_path.join("server_info.toml");
+    let info = match std::fs::read_to_string(&info_path)
+        .ok()
+        .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok())
     {
+        Some(info) => info,
+        None => {
+            eprintln!("Failed to read server info for '{}'.", name);
+            return;
+        }
+    };
+    
+    if (!server_path.join("server.properties").exists() || info.loader != "Vanilla") && !info.has_been_started
+    {
+        let info_file =
+            match std::fs::read_to_string(&info_path)
+            {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("Failed to read server_info_toml: {}", e);
+                    return;
+                }
+            };
+
+
         println!("first time start up detected...");
         println!("creating server files...");
 
-        let mut cmd = start_server(name, server_path);
+
+        let mut updated = Vec::new();
+        for line in info_file.lines()
+        {
+            if line.starts_with("has_been_started =")
+            {
+                updated.push("has_been_started = true".to_string());
+            }
+            else 
+            {
+                updated.push(line.to_string());
+            }
+        }
+        let new_contents = updated.join("\n");
+
+        if let Err(e) = std::fs::write(&info_path, new_contents)
+        {
+            eprintln!("failed to write server.properties: {}", e);
+            return;
+        }
+
+        let mut cmd = start_server(name, server_path, &info.loader);
+        println!("stopping server...");
         stop_server(&mut cmd);
         cmd.wait().expect("failed to wait on child");
 

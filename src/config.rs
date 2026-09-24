@@ -60,6 +60,8 @@ pub struct ServerInfo
     pub rcon_password: String,
     #[serde(default)]
     pub max_ram_mb: u32,
+
+    pub has_been_started: bool,
 }
 #[derive(Serialize, Deserialize, Default)]
 pub struct ServerList

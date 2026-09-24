@@ -9,16 +9,28 @@ pub fn list()
         None => return,
     };
 
-    if let Ok(entries) = fs::read_dir(&dir) {
-        for entry in entries.flatten() {
-            if entry.path().is_dir() {
+    let mut found_any = false;
+
+    if let Ok(entries) = fs::read_dir(&dir)
+    {
+        for entry in entries.flatten()
+        {
+            if entry.path().is_dir()
+            {
                 let info_path = entry.path().join("server_info.toml");
-                if let Ok(contents) = fs::read_to_string(&info_path) {
-                    if let Ok(info) = toml::from_str::<ServerInfo>(&contents) {
+                if let Ok(contents) = fs::read_to_string(&info_path)
+                {
+                    if let Ok(info) = toml::from_str::<ServerInfo>(&contents)
+                    {
                         println!(" - {} (version: {}, loader: {}, port: {})", info.name, info.version, info.loader, info.port);
+                        found_any = true;
                     }
                 }
             }
         }
+    }
+
+    if !found_any {
+        println!("no servers found");
     }
 }

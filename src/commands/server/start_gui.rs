@@ -18,6 +18,21 @@ pub async fn start_gui(name: String)
         None => return,
     };
     let server_path: std::path::PathBuf = std::path::Path::new(&dir).join(&name);
+
+    // Server info
+    let info_path = server_path.join("server_info.toml");
+    let info = match std::fs::read_to_string(&info_path)
+        .ok()
+        .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok())
+    {
+        Some(info) => info,
+        None => {
+            eprintln!("Failed to read server info for '{}'.", name);
+            return;
+        }
+    };
+
+    // name and path
     let name_clone = name.clone();
     let path_clone = server_path.clone();
     tokio::task::spawn_blocking(move || {

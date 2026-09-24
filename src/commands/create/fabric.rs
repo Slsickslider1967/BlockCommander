@@ -26,7 +26,7 @@ pub fn fabric(name: String, version: String)
     println!("created server folder at '{}'", server_path.display());
 
     // Get user installed Fabric loader .jar path
-    print!("enter the fabric loader .jar directory: ");
+    print!("enter the fabric installer .jar directory: ");
     std::io::stdout().flush().expect("Failed to flush stdout");
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).expect("Failed to read input");
@@ -55,7 +55,7 @@ pub fn fabric(name: String, version: String)
 
     if !server_path.join("fabric-server-launch.jar").exists()
     {
-        println!("fabric installer failed to create the server jar");
+        println!("fabric installer failed to create the server.jar");
         failsafe_remove(name, &server_path);
         return;
     }
@@ -131,7 +131,9 @@ pub fn fabric(name: String, version: String)
         rcon_port,
         rcon_password: config.rcon_password.unwrap_or_else(|| "defaultpassword".to_string()),
 
-        max_ram_mb,
+        max_ram_mb: max_ram_mb,
+
+        has_been_started: false,
     };
     crate::config::save_server_info(&server_path, &server_info);
     server_list.servers.push(server_info);

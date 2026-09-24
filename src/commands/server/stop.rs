@@ -17,8 +17,6 @@ pub async fn stop(name: String)
 
     println!("stopping server '{}' with RCON, port '{}'", name, info.rcon_port);
 
-    let my_local_ip = local_ip().unwrap();
-    println!("local IP address: {}", my_local_ip);
     let address = format!("127.0.0.1:{}", info.rcon_port);
 
 
