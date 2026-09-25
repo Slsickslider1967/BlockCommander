@@ -1,4 +1,5 @@
 use std::env::current_dir;
+use std::fmt::format;
 use crate::config::get_dir;
 use std::process::Stdio;
 use clap::Command;
@@ -309,6 +310,25 @@ async fn start_async_server(name: String) -> Option<tokio::process::Child>
     }
     else
     {
+        // Java arguments for forge
+        let arguments_path = server_path.join("user_jvm_args.txt");
+        let arguments = format!
+        ("\
+        -Xmx{}M
+        \n-Xms{}M
+        \n-XX:+UseG1GC
+        \n-XX:MaxGCPauseMillis=200
+        \n-XX:+ParallelRefProcEnabled
+        \n-XX:+DisableExplicitGC
+        \n-XX:MaxTenuringThreshold=1
+        \n-XX:SurvivorRatio=32
+        ", max_ram, max_ram);
+
+        if let Err(e) = std::fs::write(&arguments_path, arguments)
+        {
+            eprintln!("failed to write settings file: {}", e);
+        }
+
         tokio::process::Command::new("./run.sh")
             .current_dir(&server_path)
             .stdin(Stdio::piped())

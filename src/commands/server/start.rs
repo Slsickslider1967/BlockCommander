@@ -178,7 +178,22 @@ pub fn start_server(name: &String, server_path: &std::path::Path, loader: &Strin
     {
         // Java arguments for forge
         let arguments_path = server_path.join("user_jvm_args.txt");
-        let arguments = format!("-Xmx{}M\n-Xms{}M\nnogui", max_ram, max_ram);
+        // let arguments = format!("-Xmx{}M\n-Xms{}M\n-XX:MaxGCPauseMillis=200", max_ram, max_ram);
+        let arguments = format!
+        ("\
+        -Xmx{}M
+        \n-Xms{}M
+        \n-XX:+UseG1GC
+        \n-XX:MaxGCPauseMillis=200
+        \n-XX:+ParallelRefProcEnabled
+        \n-XX:+DisableExplicitGC
+        \n-XX:MaxTenuringThreshold=1
+        \n-XX:SurvivorRatio=32
+        \n-Djava.awt.headless=true
+        ", max_ram, max_ram);
+
+        // \n-XX:G1NewSizePercent=30
+        // \n-XX:G1MaxNewSizePercent=40
 
         if let Err(e) = std::fs::write(&arguments_path, arguments)
         {
