@@ -322,6 +322,7 @@ async fn start_async_server(name: String) -> Option<tokio::process::Child>
         \n-XX:+DisableExplicitGC
         \n-XX:MaxTenuringThreshold=1
         \n-XX:SurvivorRatio=32
+        \n-Djava.awt.headless=true
         ", max_ram, max_ram);
 
         if let Err(e) = std::fs::write(&arguments_path, arguments)
