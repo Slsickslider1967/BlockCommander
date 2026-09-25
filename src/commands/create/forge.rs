@@ -64,13 +64,79 @@ pub fn forge(name: String, version: String)
     }
 
     // Start server .sh for acepting the eula
-    let mut child = std::process::Command::new("./")
-        .arg("run.sh")
+    let mut child = std::process::Command::new("./run.sh")
         .current_dir(&server_path)
         .spawn()
         .expect("Failed to spawn forge installer");
 
     child.wait().expect("failed to wait on Fabric server");
+
+    // EULA acceptance prompt with flish so y/n appears on the same line
+
+    let eula_path = server_path.join("eula.txt");
+    let mut input = String::new();
+
+    if (!eula_path.exists())
+    {
+        println!("forge installer failed to create eula");
+        failsafe_remove(name, &server_path);
+        return;
+    }
+
+    print!("Do you accept the Minecraft EULA? (https://account.mojang.com/documents/minecraft_eula) (y/n): ");
+    std::io::stdout().flush().expect("Failed to flush stdout");
+    std::io::stdin().read_line(&mut input).expect("Failed to read input");
+
+    if input.trim().to_lowercase() != "y"
+    {
+        println!("EULA not accepted. Server creation aborted.");
+        failsafe_remove(name, &server_path);
+        return;
+    }
+
+    if let Err(e) = std::fs::write(&eula_path, "eula=true\n")
+    {
+        println!("failed to write eula.txt: {}", e);
+        failsafe_remove(name, &server_path);
+        return;
+    }
+
+    // Add server_info file
+    println!("adding server info...");
+    let config = load_config();
+    let mut server_list = crate::config::load_server_list();
+    let base_game_port = config.port.unwrap_or(25565);
+    let game_port = crate::config::next_available_port(base_game_port, &server_list);
+    let base_rcon_port = config.rcon_port.unwrap_or(25575);
+    let rcon_port = crate::config::next_available_rcon_port(base_rcon_port, &server_list);
+
+    let max_ram_mb;
+    if config.max_ram_mb > 0
+    {
+        max_ram_mb = config.max_ram_mb;
+    }
+    else
+    {
+        println!("Warning: max_ram_mb is not set in the config. Defaulting to 1024 MB.");
+        max_ram_mb = 1024;
+    };
+
+    let server_info = crate::config::ServerInfo
+    {
+        name: name.clone(),
+        version: version.clone(),
+        loader: "Forge".to_string(),
+        port: game_port,
+        rcon_port,
+        rcon_password: config.rcon_password.unwrap_or_else(|| "defaultpassword".to_string()),
+
+        max_ram_mb: max_ram_mb,
+
+        has_been_started: false,
+    };
+    crate::config::save_server_info(&server_path, &server_info);
+    server_list.servers.push(server_info);
+    crate::config::save_server_list(&server_list);
 }
 
 fn failsafe_remove(name: String, path: &std::path::Path)

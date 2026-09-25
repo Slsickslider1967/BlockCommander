@@ -71,7 +71,7 @@ While in `start-gui`:
 |---|---|
 | `↑` / `↓` | Scroll the log view up or down. |
 | Type anything, then `Enter` | Send that text as a command to the server console. |
-| `q` (with the command box empty) | Gracefully stop the server and exit the dashboard. |
+| `q` (with the command box empty) | Send a stop command vis rcon to stop the server |
 
 ## How it works
 

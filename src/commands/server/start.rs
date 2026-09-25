@@ -15,6 +15,12 @@ pub fn start(name: String)
     };
     let server_path: std::path::PathBuf  = std::path::Path::new(&dir).join(&name);
 
+    if (!server_path.is_dir())
+    {
+        println!("{} is not a server", name);
+        return;
+    }
+
     let info_path = server_path.join("server_info.toml");
     let info = match std::fs::read_to_string(&info_path)
         .ok()

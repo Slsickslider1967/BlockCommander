@@ -19,11 +19,16 @@ pub async fn start_gui(name: String)
     };
     let server_path: std::path::PathBuf = std::path::Path::new(&dir).join(&name);
 
+    if (!server_path.is_dir())
+    {
+        println!("{} is not a server", name);
+        return;
+    }
+
     // Server info
     let info_path = server_path.join("server_info.toml");
-    let info = match std::fs::read_to_string(&info_path)
-        .ok()
-        .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok())
+
+    let info = match std::fs::read_to_string(&info_path).ok().and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok())
     {
         Some(info) => info,
         None => {
@@ -275,13 +280,21 @@ async fn start_async_server(name: String) -> Option<tokio::process::Child>
     let info = std::fs::read_to_string(&info_path)
         .ok()
         .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok());
+
     let max_ram = info.as_ref().map(|i| i.max_ram_mb).filter(|&m| m > 0).unwrap_or(1024);
+
+    let jar_file_name = match info.as_ref().map(|i| i.loader.as_str())
+    {
+        Some("Vanilla") => "server.jar",
+        Some("Fabric") => "fabric-server-launch.jar",
+        _ => "server.jar",
+    };
 
     let cmd = tokio::process::Command::new("java")
         .arg(format!("-Xmx{}M", max_ram))
         .arg(format!("-Xms{}M", max_ram))
         .arg("-jar")
-        .arg(server_path.join("server.jar"))
+        .arg(server_path.join(jar_file_name))
         .arg("nogui")
         .current_dir(&server_path)
         .stdin(Stdio::piped())

@@ -84,6 +84,13 @@ pub fn fabric(name: String, version: String)
     let eula_path = server_path.join("eula.txt");
     let mut input = String::new();
 
+    if (!eula_path.exists())
+    {
+        println!("fabric installer failed to create eula");
+        failsafe_remove(name, &server_path);
+        return;
+    }
+    
     print!("Do you accept the Minecraft EULA? (https://account.mojang.com/documents/minecraft_eula) (y/n): ");
     std::io::stdout().flush().expect("Failed to flush stdout");
     std::io::stdin().read_line(&mut input).expect("Failed to read input");
