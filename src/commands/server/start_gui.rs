@@ -1,5 +1,7 @@
+use std::env::current_dir;
 use crate::config::get_dir;
 use std::process::Stdio;
+use clap::Command;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use crossterm::event::{EventStream, Event, KeyCode};
 use crossterm::terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
@@ -279,29 +281,42 @@ async fn start_async_server(name: String) -> Option<tokio::process::Child>
     let info_path = server_path.join("server_info.toml");
     let info = std::fs::read_to_string(&info_path)
         .ok()
-        .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok());
+        .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok())?;
 
-    let max_ram = info.as_ref().map(|i| i.max_ram_mb).filter(|&m| m > 0).unwrap_or(1024);
+    let max_ram = if info.max_ram_mb > 0 { info.max_ram_mb } else { 1024 };
 
-    let jar_file_name = match info.as_ref().map(|i| i.loader.as_str())
+    let cmd = if info.loader != "Forge"
     {
-        Some("Vanilla") => "server.jar",
-        Some("Fabric") => "fabric-server-launch.jar",
-        _ => "server.jar",
-    };
+        let jar_file_name = match info.loader.as_str()
+        {
+            "Vanilla" => "server.jar",
+            "Fabric" => "fabric-server-launch.jar",
+            _ => "server.jar",
+        };
 
-    let cmd = tokio::process::Command::new("java")
-        .arg(format!("-Xmx{}M", max_ram))
-        .arg(format!("-Xms{}M", max_ram))
-        .arg("-jar")
-        .arg(server_path.join(jar_file_name))
-        .arg("nogui")
-        .current_dir(&server_path)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("failed to start server process");
+        tokio::process::Command::new("java")
+            .arg(format!("-Xmx{}M", max_ram))
+            .arg(format!("-Xms{}M", max_ram))
+            .arg("-jar")
+            .arg(server_path.join(jar_file_name))
+            .arg("nogui")
+            .current_dir(&server_path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("failed to start server process")
+    }
+    else
+    {
+        tokio::process::Command::new("./run.sh")
+            .current_dir(&server_path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("Failed to spawn forge server")
+    };
 
     Some(cmd)
 }

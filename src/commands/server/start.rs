@@ -71,8 +71,8 @@ pub fn first_time_server_properties(name: &String, server_path: &std::path::Path
     let mut updated = Vec::new();
     let mut portfound = false;
     let mut namefound = false;
-    // let mut rconfound = false;
-    // let mut enablefound = false;
+    let mut rconfound = false;
+    let mut enablefound = false;
 
     // Read through the file to fine needed changes
     for line in properties.lines()
@@ -85,10 +85,12 @@ pub fn first_time_server_properties(name: &String, server_path: &std::path::Path
         else if line.starts_with("rcon.port=")
         {
             updated.push(format!("rcon.port={}", info.rcon_port));
+            rconfound = true;
         }
         else if line.starts_with("enable-rcon=")
         {
             updated.push("enable-rcon=true".to_string());
+            enablefound = true;
         }
         else if line.starts_with("rcon.password=")
         {
@@ -113,7 +115,14 @@ pub fn first_time_server_properties(name: &String, server_path: &std::path::Path
     {
         println!("updated server-name to {}", name);
     }
-    
+    if rconfound
+    {
+        println!("updated rcon-port to {}", port);
+    }
+    if enablefound
+    {
+        println!("enabled rcon-port");
+    }
 
     let new_contents = updated.join("\n");
 
@@ -139,28 +148,49 @@ pub fn start_server(name: &String, server_path: &std::path::Path, loader: &Strin
     let max_ram = info.as_ref().map(|i| i.max_ram_mb).unwrap_or(1024);
     let mut jar_File_Name = "";
 
-    if (loader == "Vanilla")
+    if (loader != "Forge")
     {
-        jar_File_Name = "server.jar";
-    }
-    if (loader == "Fabric")
-    {
-        jar_File_Name = "fabric-server-launch.jar";;
-    }
+        if (loader == "Vanilla")
+        {
+            jar_File_Name = "server.jar";
+        }
+        if (loader == "Fabric")
+        {
+            jar_File_Name = "fabric-server-launch.jar";;
+        }
 
 
-    // Run the server from server.jar
-    std::process::Command::new("java")
-        .arg(format!("-Xmx{}M", max_ram))
-        .arg(format!("-Xms{}M", max_ram))
-        .arg("-jar")
-        .arg(server_path.join(jar_File_Name))
-        .arg("nogui")
-        .current_dir(server_path)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("failed to start server process")
+        // Run the server from server.jar
+        std::process::Command::new("java")
+            .arg(format!("-Xmx{}M", max_ram))
+            .arg(format!("-Xms{}M", max_ram))
+            .arg("-jar")
+            .arg(server_path.join(jar_File_Name))
+            .arg("nogui")
+            .current_dir(server_path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("failed to start server process")
+
+    }
+    else
+    {
+        // Java arguments for forge
+        let arguments_path = server_path.join("user_jvm_args.txt");
+        let arguments = format!("-Xmx{}M\n-Xms{}M\nnogui", max_ram, max_ram);
+
+        if let Err(e) = std::fs::write(&arguments_path, arguments)
+        {
+            eprintln!("failed to write settings file: {}", e);
+        }
+
+        std::process::Command::new("./run.sh")
+            .current_dir(&server_path)
+            .stdin(Stdio::piped())
+            .spawn()
+            .expect("Failed to spawn forge installer")
+    }
 }
 
 pub fn stop_server(cmd: &mut std::process::Child)
