@@ -15,7 +15,7 @@ pub async fn stop(name: String)
         }
     };
 
-    println!("stopping server '{}' with RCON, port '{}'", name, info.rcon_port);
+    println!("stopping server '{}' with RCON port '{}'", name, info.rcon_port);
 
     let address = format!("127.0.0.1:{}", info.rcon_port);
 
@@ -35,7 +35,7 @@ pub async fn stop(name: String)
 
     match conn.cmd("stop").await
     {
-        Ok(response) => println!("server '{}' stopped: {}", name, response),
+        Ok(response) => println!("{}", response),
         Err(e) => eprintln!("failed to send stop command: {}", e),
     }
 

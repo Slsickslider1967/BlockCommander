@@ -8,6 +8,7 @@ pub fn list()
         Some(d) => d,
         None => return,
     };
+    println!("Server directory: {}", dir);
 
     let mut found_any = false;
 

@@ -37,7 +37,8 @@ pub fn start(name: String)
     
     let mut cmd = start_server(&name, &server_path, &info.loader);
 
-    println!("Server started at {}", &name);
+    println!("{} server started at {}", info.loader.to_string(),&name);
+    println!("With RCON port: {}", info.port);
 }
 
 pub fn first_time_server_properties(name: &String, server_path: &std::path::Path)
@@ -170,6 +171,7 @@ pub fn start_server(name: &String, server_path: &std::path::Path, loader: &Strin
             .current_dir(server_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
             .expect("failed to start server process")
 
@@ -202,7 +204,11 @@ pub fn start_server(name: &String, server_path: &std::path::Path, loader: &Strin
 
         std::process::Command::new("./run.sh")
             .current_dir(&server_path)
+            .env("JAVA_HOME", "/usr/lib/jvm/java-17-openjdk")
+            .env("PATH", format!("/usr/lib/jvm/java-17-openjdk/bin:{}", std::env::var("PATH").unwrap_or_default()))
             .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
             .expect("Failed to spawn forge installer")
     }
