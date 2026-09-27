@@ -149,7 +149,7 @@ pub fn start_server(name: &String, server_path: &std::path::Path, loader: &Strin
     let max_ram = info.as_ref().map(|i| i.max_ram_mb).unwrap_or(1024);
     let mut jar_File_Name = "";
 
-    if (loader != "Forge")
+    if loader == "Vanilla" || loader == "Fabric"
     {
         if (loader == "Vanilla")
         {

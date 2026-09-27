@@ -69,7 +69,7 @@ pub fn forge(name: String, version: String)
         .spawn()
         .expect("Failed to spawn forge installer");
 
-    child.wait().expect("failed to wait on Fabric server");
+    child.wait().expect("failed to wait on forge server");
 
     // EULA acceptance prompt with flish so y/n appears on the same line
 

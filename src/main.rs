@@ -52,7 +52,7 @@ pub(crate) enum Loader
     Vanilla,
     Fabric,
     Forge,
-    NeoForge,
+    Neoforge,
 }
 
 #[derive(Subcommand)]

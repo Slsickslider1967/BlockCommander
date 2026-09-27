@@ -18,7 +18,7 @@ pub fn create(name: String, version: String, loader: Loader)
         Loader::Vanilla => vanilla(name, version),
         Loader::Fabric => fabric(name, version),
         Loader::Forge => forge(name, version),
-        Loader::NeoForge => neoforge(name, version),
+        Loader::Neoforge => neoforge(name, version),
     }
 
     sync();

@@ -208,3 +208,59 @@ pub fn next_available_rcon_port(base: u16, list: &ServerList) -> u16
         candidate = candidate.checked_add(1).expect("no available RCON port");
     }
 }
+
+// Version confirmation
+pub fn version_is_greater_than(version: &str, minimum: &str) -> bool
+{
+    let parse = |v: &str| -> Vec<u32> {
+        v.split('.').filter_map(|part| part.parse::<u32>().ok()).collect()
+    };
+
+    let v_parts = parse(version);
+    let min_parts = parse(minimum);
+
+    v_parts >= min_parts
+}
+
+// Get last to numbers for neoforge
+pub fn neoforge_version_getter(version: &str) -> Option<String>
+{
+    let parse = |v: &str| -> Vec<u32> {
+        v.split('.').filter_map(|part| part.parse::<u32>().ok()).collect()
+    };
+
+    let v_parts = parse(version);
+
+    let minor = v_parts[1];
+    let patch = v_parts[2];
+    Some(format!("{}.{}", minor, patch))
+}
+
+// Getting NeoForge versions dependent on Minecraft version
+
+#[derive(Deserialize)]
+struct NeoForgeVersions
+{
+    versions: Vec<String>,
+}
+
+pub fn find_neoforge_installer_version(mc_version_prefix: &str) -> Option<String>
+{
+    let response = reqwest::blocking::get(
+        "https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge"
+    ).ok()?;
+
+    let data: NeoForgeVersions = response.json().ok()?;
+
+    data.versions
+        .into_iter()
+        .filter(|v| v.starts_with(mc_version_prefix))
+        .max_by(|a, b| {
+            let parse = |v: &str| -> Vec<u32> {
+                v.split(|c: char| !c.is_ascii_digit())
+                    .filter_map(|p| p.parse::<u32>().ok())
+                    .collect()
+            };
+            parse(a).cmp(&parse(b))
+        })
+}

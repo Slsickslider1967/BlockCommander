@@ -312,6 +312,7 @@ async fn start_async_server(name: String) -> Option<tokio::process::Child>
     {
         // Java arguments for forge
         let arguments_path = server_path.join("user_jvm_args.txt");
+        // let arguments = format!("-Xmx{}M\n-Xms{}M\n-XX:MaxGCPauseMillis=200", max_ram, max_ram);
         let arguments = format!
         ("\
         -Xmx{}M
@@ -324,6 +325,9 @@ async fn start_async_server(name: String) -> Option<tokio::process::Child>
         \n-XX:SurvivorRatio=32
         \n-Djava.awt.headless=true
         ", max_ram, max_ram);
+
+        // \n-XX:G1NewSizePercent=30
+        // \n-XX:G1MaxNewSizePercent=40
 
         if let Err(e) = std::fs::write(&arguments_path, arguments)
         {
