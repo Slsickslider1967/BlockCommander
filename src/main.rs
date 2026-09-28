@@ -58,7 +58,11 @@ pub(crate) enum Loader
 #[derive(Subcommand)]
 enum Commands
 {
-    /// create <name> <version> [--loader <loader>]
+    // Add a server from a file
+    Add
+    {
+        Extern_Folder_Dir: String,
+    },
     Create 
     {
         name: String,
@@ -66,21 +70,17 @@ enum Commands
         #[arg(long, value_enum, default_value = "vanilla")]
         loader: Loader,
     },
-    /// Delete <name>
     Delete { name: String },
-    /// List all servers.
     List,
-    /// List all active servers.
     ListActive,
 
-    /// Configure BlockCommander settings.
     Config 
     {
         #[command(subcommand)]
         action: ConfigAction,
     },
 
-    /// Run a command on a server. The first argument is the server name, followed by the command and its arguments.
+    // Run a command on a server. The first argument is the server name, followed by the command and its arguments.
     #[command(external_subcommand)]
     Server(Vec<String>),
 }
@@ -99,15 +99,10 @@ enum ServerCommands
 #[derive(Subcommand)]
 enum ConfigAction 
 {
-    /// Set the folder where servers are created and stored
     ServersDir { dir: String },
-    /// Set the default port for new servers
     DefualtPort { port: u16 },
-    /// Set the default RCON port for new servers
     DefaultRconPort { port: u16 },
-    /// Sync the configuration file with the current state of the servers folder
     Sync,
-    /// Set the maximum RAM for new servers
     SetMaxRam { ram_mb: u32 },
 }
 

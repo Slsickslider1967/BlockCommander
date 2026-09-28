@@ -4,6 +4,7 @@ mod listactive;
 mod delete;
 mod config;
 mod server;
+mod add;
 
 
 pub use create::*;
@@ -12,3 +13,4 @@ pub use listactive::*;
 pub use config::*;
 pub use server::*;
 pub use delete::*;
+pub use add::*;
