@@ -1,5 +1,7 @@
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
+use std::path::Path;
+use std::fs;
 
 // Configuration for BlockCommander, stored in a TOML file in the user's config directory.
 
@@ -62,6 +64,7 @@ pub struct ServerInfo
     pub max_ram_mb: u32,
 
     pub has_been_started: bool,
+    pub start_file: String,
 }
 #[derive(Serialize, Deserialize, Default)]
 pub struct ServerList
@@ -263,4 +266,27 @@ pub fn find_neoforge_installer_version(mc_version_prefix: &str) -> Option<String
             };
             parse(a).cmp(&parse(b))
         })
+}
+
+// Recursing file copying for add
+pub fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()>
+{
+    fs::create_dir_all(dst)?;
+
+    for entry in fs::read_dir(src)?
+    {
+        let entry = entry?;
+        let target = dst.join(entry.file_name());
+
+        if entry.file_type()?.is_dir()
+        {
+            copy_dir_recursive(&entry.path(), &target)?;
+        }
+        else
+        {
+            fs::copy(entry.path(), &target)?;
+        }
+    }
+
+    Ok(())
 }

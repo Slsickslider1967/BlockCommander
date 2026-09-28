@@ -114,6 +114,7 @@ async fn main()
     match cli.command
     {
         Commands::Create { name, version, loader } => {tokio::task::spawn_blocking(move ||commands::create(name, version, loader)).await.expect("create task panicked");},
+        Commands::Add { Extern_Folder_Dir } => commands::Add_Extern_Server(Extern_Folder_Dir),
         Commands::Delete { name } => commands::delete(name),
         Commands::List => commands::list(),
         Commands::ListActive => commands::list_active().await,
