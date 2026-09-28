@@ -35,7 +35,11 @@ The compiled binary will be at `target/release/BlockCommander`. Copy it somewher
 
 ```bash
 BlockCommander config servers-dir /path/to/servers
+
 BlockCommander create MyWorld 1.20.1
+or
+BlockCommander add /path/to/external/server
+
 BlockCommander MyWorld start        # or: start-gui, for the live dashboard
 BlockCommander MyWorld stop         # stops it from anywhere, no need to be attached
 ```
@@ -44,7 +48,8 @@ BlockCommander MyWorld stop         # stops it from anywhere, no need to be atta
 
 ```
 BlockCommander
-├── create <name> <version> [--loader <vanilla|fabric|forge|neoforge>]   Create a new server (defaults to vanilla)
+├── create <name> <version> [--loader <vanilla|fabric|forge|neoforge>]  Create a new server (defaults to vanilla)
+├── add <external file directory>                                       Add a external premade server to the server list
 ├── delete <name>                                                       Delete a server and remove it from the list
 ├── list                                                                List every known server
 │
