@@ -1,4 +1,5 @@
 ﻿use std::path::Path;
+use std::path::PathBuf;
 use std::fs;
 use std::io::Write;
 use clap::ValueEnum;
@@ -24,9 +25,15 @@ pub fn Add_Extern_Server(extern_dir: String)
     let name = prompt("enter the server name");
     let version = prompt("enter the server minecraft version");
     let loader = prompt_loader();
-    let start_file;
-
-    start_file =
+    let start_file = match find_start_file(&extern_path)
+    {
+        Some(p) => p,
+        None => {
+            println!("can't find a start file, cancelling add");
+            return;
+        }
+    };
+    println!("start file found: '{}', beginning server transfer", start_file.to_string());
 
     let destination_path = Path::new(&dir).join(&name);
     if destination_path.exists()
@@ -66,8 +73,8 @@ pub fn Add_Extern_Server(extern_dir: String)
         rcon_password: config.rcon_password.unwrap_or_else(|| "defaultpassword".to_string()),
         max_ram_mb: if config.max_ram_mb > 0 { config.max_ram_mb } else { 1024 },
 
-        has_been_started: true,
-        start_file: start_file,
+        has_been_started: false,
+        start_file: start_file.to_string(),
     };
 
     save_server_info(&destination_path, &info);
@@ -112,4 +119,25 @@ impl std::fmt::Display for Loader
         };
         write!(f, "{}", name)
     }
+}
+
+fn find_start_file(dir: &Path) -> Option<String>
+{
+    let entries = std::fs::read_dir(dir).ok()?;
+
+    for entry in entries.flatten()
+    {
+        let path = entry.path();
+        match path.extension().and_then(|e| e.to_str())
+        {
+            Some("jar") | Some("sh") => {
+                return path.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.to_string());
+            }
+            _ => {}
+        }
+    }
+
+    None
 }

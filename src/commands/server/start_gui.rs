@@ -286,13 +286,22 @@ async fn start_async_server(name: String) -> Option<tokio::process::Child>
 
     let max_ram = if info.max_ram_mb > 0 { info.max_ram_mb } else { 1024 };
 
-    let cmd = if info.loader != "Forge"
+    //let jar_or_script;
+
+    let cmd = if info.loader == "Vanilla" || info.loader == "Fabric"
     {
-        let jar_file_name = match info.loader.as_str()
+        let jar_file_name: String = if info.start_file == "defaultfile"
         {
-            "Vanilla" => "server.jar",
-            "Fabric" => "fabric-server-launch.jar",
-            _ => "server.jar",
+            match info.loader.as_str()
+            {
+                "Vanilla" => "server.jar".to_string(),
+                "Fabric" => "fabric-server-launch.jar".to_string(),
+                _ => "server.jar".to_string(),
+            }
+        }
+        else
+        {
+            info.start_file.clone()
         };
 
         tokio::process::Command::new("java")
@@ -308,40 +317,37 @@ async fn start_async_server(name: String) -> Option<tokio::process::Child>
             .spawn()
             .expect("failed to start server process")
     }
-    else
+    else // Forge or NeoForge
     {
-        // Java arguments for forge
         let arguments_path = server_path.join("user_jvm_args.txt");
-        // let arguments = format!("-Xmx{}M\n-Xms{}M\n-XX:MaxGCPauseMillis=200", max_ram, max_ram);
-        let arguments = format!
-        ("\
-        -Xmx{}M
-        \n-Xms{}M
-        \n-XX:+UseG1GC
-        \n-XX:MaxGCPauseMillis=200
-        \n-XX:+ParallelRefProcEnabled
-        \n-XX:+DisableExplicitGC
-        \n-XX:MaxTenuringThreshold=1
-        \n-XX:SurvivorRatio=32
-        \n-Djava.awt.headless=true
-        ", max_ram, max_ram);
-
-        // \n-XX:G1NewSizePercent=30
-        // \n-XX:G1MaxNewSizePercent=40
+        let arguments = format!(
+            "-Xmx{}M\n-Xms{}M\n-XX:+UseG1GC\n-XX:MaxGCPauseMillis=200\n-XX:+ParallelRefProcEnabled\n-XX:+DisableExplicitGC\n-XX:MaxTenuringThreshold=1\n-XX:SurvivorRatio=32\n-Djava.awt.headless=true\n",
+            max_ram, max_ram
+        );
 
         if let Err(e) = std::fs::write(&arguments_path, arguments)
         {
             eprintln!("failed to write settings file: {}", e);
         }
 
-        tokio::process::Command::new("./run.sh")
+        let start_file_name = if info.start_file != "defaultfile"
+        {
+            info.start_file.clone()
+        }
+        else
+        {
+            "run.sh".to_string()
+        };
+
+        tokio::process::Command::new(format!("./{}", start_file_name))
             .current_dir(&server_path)
+            .env("JAVA_HOME", "/usr/lib/jvm/java-17-openjdk")
+            .env("PATH", format!("/usr/lib/jvm/java-17-openjdk/bin:{}", std::env::var("PATH").unwrap_or_default()))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .expect("Failed to spawn forge server")
     };
-
     Some(cmd)
 }

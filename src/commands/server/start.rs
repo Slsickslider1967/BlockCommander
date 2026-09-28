@@ -2,6 +2,7 @@ use crate::config::{get_dir, ServerInfo};
 use std::process::Stdio;
 use std::io::Write;
 use std::ptr::null;
+use clap::builder::Str;
 use clap::Command;
 
 pub fn start(name: String)
@@ -35,7 +36,7 @@ pub fn start(name: String)
 
     ensure_server_initialized(&name, &server_path);
     
-    let mut cmd = start_server(&name, &server_path, &info.loader);
+    let mut cmd = start_server(&name, &server_path, &info.loader, &info.start_file);
 
     println!("{} server started at {}", info.loader.to_string(),&name);
     println!("With RCON port: {}", info.port);
@@ -137,7 +138,7 @@ pub fn first_time_server_properties(name: &String, server_path: &std::path::Path
 
 }
 
-pub fn start_server(name: &String, server_path: &std::path::Path, loader: &String) -> std::process::Child
+pub fn start_server(name: &String, server_path: &std::path::Path, loader: &String, start_file: &String) -> std::process::Child
 {
     println!("starting server '{}' from '{}'", name, server_path.display());
 
@@ -147,26 +148,30 @@ pub fn start_server(name: &String, server_path: &std::path::Path, loader: &Strin
         .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok());
 
     let max_ram = info.as_ref().map(|i| i.max_ram_mb).unwrap_or(1024);
-    let mut jar_File_Name = "";
+
+    println!("DEBUG: loader argument received = '{}'", loader);
 
     if loader == "Vanilla" || loader == "Fabric"
     {
-        if (loader == "Vanilla")
+        let jar_file_name: String = if start_file == "defaultfile"
         {
-            jar_File_Name = "server.jar";
+            match loader.as_str()
+            {
+                "Vanilla" => "server.jar".to_string(),
+                "Fabric" => "fabric-server-launch.jar".to_string(),
+                _ => "server.jar".to_string(),
+            }
         }
-        if (loader == "Fabric")
+        else
         {
-            jar_File_Name = "fabric-server-launch.jar";;
-        }
+            start_file.clone()
+        };
 
-
-        // Run the server from server.jar
         std::process::Command::new("java")
             .arg(format!("-Xmx{}M", max_ram))
             .arg(format!("-Xms{}M", max_ram))
             .arg("-jar")
-            .arg(server_path.join(jar_File_Name))
+            .arg(server_path.join(jar_file_name))
             .arg("nogui")
             .current_dir(server_path)
             .stdin(Stdio::piped())
@@ -174,35 +179,30 @@ pub fn start_server(name: &String, server_path: &std::path::Path, loader: &Strin
             .stderr(Stdio::piped())
             .spawn()
             .expect("failed to start server process")
-
     }
     else
     {
-        // Java arguments for forge
         let arguments_path = server_path.join("user_jvm_args.txt");
-        // let arguments = format!("-Xmx{}M\n-Xms{}M\n-XX:MaxGCPauseMillis=200", max_ram, max_ram);
-        let arguments = format!
-        ("\
-        -Xmx{}M
-        \n-Xms{}M
-        \n-XX:+UseG1GC
-        \n-XX:MaxGCPauseMillis=200
-        \n-XX:+ParallelRefProcEnabled
-        \n-XX:+DisableExplicitGC
-        \n-XX:MaxTenuringThreshold=1
-        \n-XX:SurvivorRatio=32
-        \n-Djava.awt.headless=true
-        ", max_ram, max_ram);
-
-        // \n-XX:G1NewSizePercent=30
-        // \n-XX:G1MaxNewSizePercent=40
+        let arguments = format!(
+            "-Xmx{}M\n-Xms{}M\n-XX:+UseG1GC\n-XX:MaxGCPauseMillis=200\n-XX:+ParallelRefProcEnabled\n-XX:+DisableExplicitGC\n-XX:MaxTenuringThreshold=1\n-XX:SurvivorRatio=32\n-Djava.awt.headless=true\n",
+            max_ram, max_ram
+        );
 
         if let Err(e) = std::fs::write(&arguments_path, arguments)
         {
             eprintln!("failed to write settings file: {}", e);
         }
 
-        std::process::Command::new("./run.sh")
+        let start_file_name = if start_file != "defaultfile"
+        {
+            start_file.clone()
+        }
+        else
+        {
+            "run.sh".to_string()
+        };
+
+        std::process::Command::new(format!("./{}", start_file_name))
             .current_dir(&server_path)
             .env("JAVA_HOME", "/usr/lib/jvm/java-17-openjdk")
             .env("PATH", format!("/usr/lib/jvm/java-17-openjdk/bin:{}", std::env::var("PATH").unwrap_or_default()))
@@ -273,7 +273,7 @@ pub fn ensure_server_initialized(name: &String, server_path: &std::path::Path)
             return;
         }
 
-        let mut cmd = start_server(name, server_path, &info.loader);
+        let mut cmd = start_server(name, server_path, &info.loader, &info.start_file);
         println!("stopping server...");
         stop_server(&mut cmd);
         cmd.wait().expect("failed to wait on child");
