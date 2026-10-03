@@ -55,6 +55,7 @@ pub struct ServerInfo
     pub version: String,
     pub loader: String,
     pub port: u16,
+    pub required_java: u32,
 
     #[serde(default)]
     pub rcon_port: u16,
@@ -109,6 +110,20 @@ pub fn load_server_list() -> ServerList
     }
 }
 
+// Find the java version for the minecraft version
+pub fn find_required_java_version(version_url: &str) -> u32
+{
+    let response = match reqwest::blocking::get(version_url) {
+        Ok(r) => r,
+        Err(_) => return 17,
+    };
+    let detail: VersionDetail = match response.json() {
+        Ok(d) => d,
+        Err(_) => return 17,
+    };
+    detail.java_version.map(|j| j.major_version).unwrap_or(17)
+}
+
 // Find the URL for a specific Minecraft version in Mojang's version manifest and download it. Returns None if the version isn't found or if the request fails.
 
 #[derive(Deserialize)]
@@ -126,6 +141,7 @@ struct VersionEntry
 #[derive(Deserialize)]
 struct VersionDetail {
     downloads: Downloads,
+    java_version: ()
 }
 
 #[derive(Deserialize)]

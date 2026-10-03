@@ -99,6 +99,7 @@ pub fn add_extern_server(extern_dir: String)
         name,
         version,
         loader: loader.to_string(),
+        required_java: find_required_java_version(&version_url),
 
         port,
         rcon_port,

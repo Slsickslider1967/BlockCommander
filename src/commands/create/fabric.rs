@@ -1,4 +1,4 @@
-use crate::config::{load_config, find_version_url, download_server_jar, get_dir};
+use crate::config::{load_config, find_version_url, download_server_jar, get_dir, find_required_java_version};
 use std::fs;
 use std::io::Write;
 
@@ -134,6 +134,7 @@ pub fn fabric(name: String, version: String)
         name: name.clone(),
         version: version.clone(),
         loader: "Fabric".to_string(),
+        required_java: find_required_java_version(&version_url),
         
         port: game_port,
         rcon_port,

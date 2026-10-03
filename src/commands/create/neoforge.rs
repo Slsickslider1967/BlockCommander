@@ -1,4 +1,4 @@
-use crate::config::{load_config, find_version_url, download_server_jar, get_dir, version_is_greater_than, neoforge_version_getter, find_neoforge_installer_version};
+use crate::config::{load_config, find_version_url, download_server_jar, get_dir, version_is_greater_than, neoforge_version_getter, find_neoforge_installer_version, find_required_java_version};
 use std::fs;
 use std::io::Write;
 use reqwest::Version;
@@ -148,6 +148,7 @@ pub fn neoforge(name: String, version: String)
         name: name.clone(),
         version: version.clone(),
         loader: "NeoForge".to_string(),
+        required_java: find_required_java_version(&version_url),
 
         port: game_port,
         rcon_port,

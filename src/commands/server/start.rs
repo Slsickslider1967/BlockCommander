@@ -32,7 +32,7 @@ pub fn start(name: String)
 
     ensure_server_initialized(&name, &server_path);
 
-    let _cmd = start_server(&name, &server_path, &info.loader, &info.start_file);
+    let _cmd = start_server(&name, &server_path, &info.loader, &info.start_file, info.required_java);
 
     println!("{} server started at {}", info.loader, &name);
     println!("With RCON port: {}", info.port);
@@ -118,7 +118,23 @@ pub fn first_time_server_properties(name: &String, server_path: &std::path::Path
     println!("updated server.properties for '{}'", name);
 }
 
-pub fn start_server(name: &String, server_path: &std::path::Path, loader: &String, start_file: &String) -> std::process::Child
+fn find_java_home(major_version: u32) -> Option<String>
+{
+    let entries = std::fs::read_dir("/usr/lib/jvm").ok()?;
+
+    for entry in entries.flatten()
+    {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name.contains(&major_version.to_string())
+        {
+            return Some(entry.path().to_string_lossy().to_string());
+        }
+    }
+
+    None
+}
+
+pub fn start_server(name: &String, server_path: &std::path::Path, loader: &String, start_file: &String, required_java: u32) -> std::process::Child
 {
     println!("starting server '{}' from '{}'", name, server_path.display());
 
@@ -128,6 +144,7 @@ pub fn start_server(name: &String, server_path: &std::path::Path, loader: &Strin
         .and_then(|contents| toml::from_str::<ServerInfo>(&contents).ok());
 
     let max_ram = info.as_ref().map(|i| i.max_ram_mb).unwrap_or(1024);
+    let java_home = find_java_home(required_java);
 
     if loader == "Vanilla" || loader == "Fabric"
     {
@@ -145,8 +162,8 @@ pub fn start_server(name: &String, server_path: &std::path::Path, loader: &Strin
             start_file.clone()
         };
 
-        std::process::Command::new("java")
-            .arg(format!("-Xmx{}M", max_ram))
+        let mut cmd = std::process::Command::new("java");
+        cmd.arg(format!("-Xmx{}M", max_ram))
             .arg(format!("-Xms{}M", max_ram))
             .arg("-jar")
             .arg(server_path.join(jar_file_name))
@@ -154,9 +171,15 @@ pub fn start_server(name: &String, server_path: &std::path::Path, loader: &Strin
             .current_dir(server_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("failed to start server process")
+            .stderr(Stdio::piped());
+
+        if let Some(home) = &java_home
+        {
+            cmd.env("JAVA_HOME", home);
+            cmd.env("PATH", format!("{}/bin:{}", home, std::env::var("PATH").unwrap_or_default()));
+        }
+
+        cmd.spawn().expect("failed to start server process")
     }
     else
     {
@@ -180,15 +203,19 @@ pub fn start_server(name: &String, server_path: &std::path::Path, loader: &Strin
             "run.sh".to_string()
         };
 
-        std::process::Command::new(format!("./{}", start_file_name))
-            .current_dir(server_path)
-            .env("JAVA_HOME", "/usr/lib/jvm/java-17-openjdk")
-            .env("PATH", format!("/usr/lib/jvm/java-17-openjdk/bin:{}", std::env::var("PATH").unwrap_or_default()))
+        let mut cmd = std::process::Command::new(format!("./{}", start_file_name));
+        cmd.current_dir(server_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("Failed to spawn forge server")
+            .stderr(Stdio::piped());
+
+        if let Some(home) = &java_home
+        {
+            cmd.env("JAVA_HOME", home);
+            cmd.env("PATH", format!("{}/bin:{}", home, std::env::var("PATH").unwrap_or_default()));
+        }
+
+        cmd.spawn().expect("Failed to spawn forge server")
     }
 }
 
@@ -248,7 +275,7 @@ pub fn ensure_server_initialized(name: &String, server_path: &std::path::Path)
             return;
         }
 
-        let mut cmd = start_server(name, server_path, &info.loader, &info.start_file);
+        let mut cmd = start_server(name, server_path, &info.loader, &info.start_file, info.required_java);
         println!("stopping server...");
         stop_server(&mut cmd);
         cmd.wait().expect("failed to wait on child");
