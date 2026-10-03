@@ -6,7 +6,7 @@ use std::fs;
 // Configuration for BlockCommander, stored in a TOML file in the user's config directory.
 
 #[derive(Serialize, Deserialize, Default)]
-pub struct Config 
+pub struct Config
 {
     pub servers_dir: Option<String>,
     pub port: Option<u16>,
@@ -17,7 +17,7 @@ pub struct Config
     pub max_ram_mb: u32,
 }
 
-fn config_path() -> PathBuf 
+fn config_path() -> PathBuf
 {
     let mut path = dirs::config_dir().expect("couldn't find config dir");
     path.push("BlockCommander");
@@ -25,20 +25,20 @@ fn config_path() -> PathBuf
     path
 }
 
-pub fn load_config() -> Config 
+pub fn load_config() -> Config
 {
     let path = config_path();
-    match std::fs::read_to_string(&path) 
+    match std::fs::read_to_string(&path)
     {
         Ok(contents) => toml::from_str(&contents).unwrap_or_default(),
         Err(_) => Config::default(),
     }
 }
 
-pub fn save_config(config: &Config) 
+pub fn save_config(config: &Config)
 {
     let path = config_path();
-    if let Some(parent) = path.parent() 
+    if let Some(parent) = path.parent()
     {
         std::fs::create_dir_all(parent).expect("couldn't create config dir");
     }
@@ -121,7 +121,10 @@ pub fn find_required_java_version(version_url: &str) -> u32
         Ok(d) => d,
         Err(_) => return 17,
     };
-    detail.java_version.map(|j| j.major_version).unwrap_or(17)
+    match detail.java_version {
+        Some(j) => j.major_version,
+        None => 17,
+    }
 }
 
 // Find the URL for a specific Minecraft version in Mojang's version manifest and download it. Returns None if the version isn't found or if the request fails.
@@ -141,7 +144,15 @@ struct VersionEntry
 #[derive(Deserialize)]
 struct VersionDetail {
     downloads: Downloads,
-    java_version: ()
+    #[serde(rename = "javaVersion")]
+    java_version: Option<JavaVersionInfo>,
+}
+
+#[derive(Deserialize)]
+struct JavaVersionInfo
+{
+    #[serde(rename = "majorVersion")]
+    major_version: u32,
 }
 
 #[derive(Deserialize)]
@@ -192,7 +203,7 @@ pub fn get_dir() -> Option<String>
 {
     let config = load_config();
 
-    let dir = match config.servers_dir 
+    let dir = match config.servers_dir
     {
         Some(d) => d,
         None => {
@@ -203,7 +214,7 @@ pub fn get_dir() -> Option<String>
     Some(dir)
 }
 
-// RCON and Game port avalability 
+// RCON and Game port avalability
 pub fn next_available_port(base: u16, list: &ServerList) -> u16
 {
     let mut candidate = base;
@@ -250,8 +261,8 @@ pub fn neoforge_version_getter(version: &str) -> Option<String>
 
     let v_parts = parse(version);
 
-    let minor = v_parts[1];
-    let patch = v_parts[2];
+    let minor = v_parts.get(1)?;
+    let patch = v_parts.get(2)?;
     Some(format!("{}.{}", minor, patch))
 }
 

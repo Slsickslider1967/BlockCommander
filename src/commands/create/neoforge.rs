@@ -143,12 +143,18 @@ pub fn neoforge(name: String, version: String)
         max_ram_mb = 1024;
     };
 
+    let required_java = match find_version_url(&version)
+    {
+        Some(url) => find_required_java_version(&url),
+        None => 17,
+    };
+
     let server_info = crate::config::ServerInfo
     {
         name: name.clone(),
         version: version.clone(),
         loader: "NeoForge".to_string(),
-        required_java: find_required_java_version(&version_url),
+        required_java: find_required_java_version(&required_java.to_string()),
 
         port: game_port,
         rcon_port,
