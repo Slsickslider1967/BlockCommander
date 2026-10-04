@@ -94,12 +94,18 @@ pub fn add_extern_server(extern_dir: String)
     let port = next_available_port(config.port.unwrap_or(25565), &list);
     let rcon_port = next_available_rcon_port(config.rcon_port.unwrap_or(25575), &list);
 
+    let required_java = match find_version_url(&version)
+    {
+        Some(url) => find_required_java_version(&url),
+        None => 17,
+    };
+
     let info = ServerInfo
     {
         name,
         version,
         loader: loader.to_string(),
-        required_java: find_required_java_version(&version_url),
+        required_java: find_required_java_version(&required_java.to_string()),
 
         port,
         rcon_port,
