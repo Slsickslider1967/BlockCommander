@@ -118,7 +118,7 @@ pub fn first_time_server_properties(name: &String, server_path: &std::path::Path
     println!("updated server.properties for '{}'", name);
 }
 
-fn find_java_home(major_version: u32) -> Option<String>
+pub fn find_java_home(major_version: u32) -> Option<String>
 {
     let entries = std::fs::read_dir("/usr/lib/jvm").ok()?;
 

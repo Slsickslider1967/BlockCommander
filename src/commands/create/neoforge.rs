@@ -23,6 +23,7 @@ pub fn neoforge(name: String, version: String)
     if server_path.exists()
     {
         println!("server '{}' already exists in '{}'", name, dir);
+        failsafe_remove(name, &server_path);
         return;
     }
     if let Err(e) = fs::create_dir_all(&server_path) {
@@ -59,6 +60,7 @@ pub fn neoforge(name: String, version: String)
         Some(v) => v,
         None => {
             println!("couldn't determine NeoForge version for '{}'", version);
+            failsafe_remove(name, &server_path);
             return;
         }
     };

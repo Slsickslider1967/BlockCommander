@@ -255,15 +255,20 @@ pub fn version_is_greater_than(version: &str, minimum: &str) -> bool
 // Get last to numbers for neoforge
 pub fn neoforge_version_getter(version: &str) -> Option<String>
 {
-    let parse = |v: &str| -> Vec<u32> {
-        v.split('.').filter_map(|part| part.parse::<u32>().ok()).collect()
-    };
+    let parts: Vec<u32> = version.split('.').filter_map(|p| p.parse().ok()).collect();
 
-    let v_parts = parse(version);
+    let first = *parts.get(0)?;
+    let second = *parts.get(1)?;
+    let third = parts.get(2).copied().unwrap_or(0);
 
-    let minor = v_parts.get(1)?;
-    let patch = v_parts.get(2)?;
-    Some(format!("{}.{}", minor, patch))
+    if first >= 26
+    {
+        Some(format!("{}.{}.{}", first, second, third))
+    }
+    else
+    {
+        Some(format!("{}.{}", second, third))
+    }
 }
 
 // Getting NeoForge versions dependent on Minecraft version

@@ -10,7 +10,7 @@ use crossterm::execute;
 use futures::StreamExt;
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::{Block, Borders, Paragraph}, layout::{Layout, Direction, Constraint}};
 use sysinfo::{ProcessesToUpdate, System, Pid};
-use super::start::{ensure_server_initialized};
+use super::start::{ensure_server_initialized, find_java_home};
 
 pub async fn start_gui(name: String)
 {
@@ -285,10 +285,9 @@ async fn start_async_server(name: String) -> Option<tokio::process::Child>
         .and_then(|contents| toml::from_str::<crate::config::ServerInfo>(&contents).ok())?;
 
     let max_ram = if info.max_ram_mb > 0 { info.max_ram_mb } else { 1024 };
+    let java_home = find_java_home(info.required_java);
 
-    //let jar_or_script;
-
-    let cmd = if info.loader == "Vanilla" || info.loader == "Fabric"
+    let mut cmd = if info.loader == "Vanilla" || info.loader == "Fabric"
     {
         let jar_file_name: String = if info.start_file == "defaultfile"
         {
@@ -304,20 +303,15 @@ async fn start_async_server(name: String) -> Option<tokio::process::Child>
             info.start_file.clone()
         };
 
-        tokio::process::Command::new("java")
-            .arg(format!("-Xmx{}M", max_ram))
+        let mut c = tokio::process::Command::new("java");
+        c.arg(format!("-Xmx{}M", max_ram))
             .arg(format!("-Xms{}M", max_ram))
             .arg("-jar")
             .arg(server_path.join(jar_file_name))
-            .arg("nogui")
-            .current_dir(&server_path)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("failed to start server process")
+            .arg("nogui");
+        c
     }
-    else // Forge or NeoForge
+    else
     {
         let arguments_path = server_path.join("user_jvm_args.txt");
         let arguments = format!(
@@ -340,14 +334,18 @@ async fn start_async_server(name: String) -> Option<tokio::process::Child>
         };
 
         tokio::process::Command::new(format!("./{}", start_file_name))
-            .current_dir(&server_path)
-            .env("JAVA_HOME", "/usr/lib/jvm/java-17-openjdk")
-            .env("PATH", format!("/usr/lib/jvm/java-17-openjdk/bin:{}", std::env::var("PATH").unwrap_or_default()))
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("Failed to spawn forge server")
     };
-    Some(cmd)
+
+    cmd.current_dir(&server_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    if let Some(home) = &java_home
+    {
+        cmd.env("JAVA_HOME", home);
+        cmd.env("PATH", format!("{}/bin:{}", home, std::env::var("PATH").unwrap_or_default()));
+    }
+
+    Some(cmd.spawn().expect("failed to start server process"))
 }
