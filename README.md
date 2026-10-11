@@ -24,7 +24,7 @@ Most Minecraft server tools are either full GUI applications (heavy, and often W
 Requires [Rust](https://www.rust-lang.org/tools/install) and a working Java installation (for actually running Minecraft servers).
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/Slsickslider1967/BlockCommander
 cd BlockCommander
 cargo build --release
 ```
@@ -37,6 +37,8 @@ The compiled binary will be at `target/release/BlockCommander`. Copy it somewher
 BlockCommander config servers-dir /path/to/servers
 
 BlockCommander create MyWorld 1.20.1
+or incase of a modded server 
+BlockCommander create MyWorld 1.20.1 --loader forge/neoforge/fabric 
 or
 BlockCommander add /path/to/external/server
 
@@ -57,9 +59,8 @@ BlockCommander
 │   ├── start                                                           Start in the background, return the terminal immediately
 │   ├── start-gui                                                       Start with the live dashboard (logs, CPU/RAM, command box)
 │   ├── stop                                                            Stop a running server remotely via RCON
-│   ├── port <port>                                                     Change the server's game port
-│   ├── rcon-port <port>                                                Change the server's RCON port
-│   └── rcon-password <password>                                        Change the server's RCON password
+│   ├── list-config                                                     List servers properties
+│   └── update-config <config-name, config-change>                      Update servers properties with config name 
 │
 └── config
     ├── servers-dir <dir>                                               Set the folder servers are created and stored in

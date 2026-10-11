@@ -92,8 +92,6 @@ enum ServerCommands
     StartGui,
     Stop,
     Port { port: u16 },
-    RconPort { port: u16 },
-    RconPassword { password: String },
     ListConfig,
     UpdateConfig { config_name: String, config_change: String },
 }
@@ -166,8 +164,6 @@ async fn handle_server_command(args: Vec<String>)
         ServerCommands::StartGui => commands::start_gui(server_name).await,
         ServerCommands::Stop => commands::stop(server_name).await,
         ServerCommands::Port { port } => commands::change_ports(server_name, Some(port), None),
-        ServerCommands::RconPort { port } => commands::change_ports(server_name, None, Some(port)),
-        ServerCommands::RconPassword { password } => commands::change_rcon_password(password),
         ServerCommands::ListConfig => commands::list_server_config(server_name),
         ServerCommands::UpdateConfig { config_name, config_change } => commands::update_server_config(server_name, config_name, config_change),
     }
