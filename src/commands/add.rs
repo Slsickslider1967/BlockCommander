@@ -4,6 +4,8 @@ use std::io::Write;
 use clap::ValueEnum;
 use crate::Loader;
 use crate::config::*;
+use std::os::unix::process::CommandExt;
+use std::process::Stdio;
 
 const KNOWN_LAUNCHERS: [&str; 3] = ["server.jar", "fabric-server-launch.jar", "run.sh"];
 
@@ -142,6 +144,15 @@ fn find_setup_script(dir: &Path) -> Option<String>
     None
 }
 
+fn kill_group(pid: u32)
+{
+    let _ = std::process::Command::new("kill")
+        .arg("-TERM")
+        .arg("--")
+        .arg(format!("-{}", pid))
+        .status();
+}
+
 fn run_setup_script(server_path: &Path, script_name: &str, required_java: u32)
 {
     let script_path = server_path.join(script_name);
@@ -152,9 +163,12 @@ fn run_setup_script(server_path: &Path, script_name: &str, required_java: u32)
 
     println!("running setup script...");
     let mut cmd = std::process::Command::new(format!("./{}", script_name));
-    cmd.current_dir(server_path);
+    cmd.current_dir(server_path)
+        .stdin(Stdio::null())
+        .process_group(0);
     set_java_env(&mut cmd, required_java);
     let mut child = cmd.spawn().expect("Failed to spawn setup script");
+    let group = child.id();
 
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(300);
 
@@ -163,8 +177,9 @@ fn run_setup_script(server_path: &Path, script_name: &str, required_java: u32)
         if eula_path.exists()
         {
             println!("setup finished, eula.txt found");
-            let _ = child.kill();
+            kill_group(group);
             let _ = child.wait();
+            std::thread::sleep(std::time::Duration::from_secs(2));
             return;
         }
 
@@ -177,7 +192,7 @@ fn run_setup_script(server_path: &Path, script_name: &str, required_java: u32)
         if std::time::Instant::now() >= deadline
         {
             println!("setup script didn't finish within 5 minutes, giving up");
-            let _ = child.kill();
+            kill_group(group);
             let _ = child.wait();
             return;
         }
@@ -185,7 +200,6 @@ fn run_setup_script(server_path: &Path, script_name: &str, required_java: u32)
         std::thread::sleep(std::time::Duration::from_millis(500));
     }
 }
-
 fn find_start_file(dir: &Path) -> Option<String>
 {
     for name in KNOWN_LAUNCHERS

@@ -32,7 +32,6 @@ pub fn start(name: String)
     };
 
     ensure_server_initialized(&name, &server_path);
-    first_time_server_properties(&name, &server_path);
 
     let _cmd = start_server(&name, &server_path, &info.loader, &info.start_file, info.required_java);
 
