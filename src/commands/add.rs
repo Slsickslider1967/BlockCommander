@@ -27,6 +27,12 @@ pub fn add_extern_server(extern_dir: String)
     let version = prompt("enter the server minecraft version");
     let loader = prompt_loader();
 
+    let required_java = match find_version_url(&version)
+    {
+        Some(url) => find_required_java_version(&url),
+        None => 17,
+    };
+
     let destination_path = Path::new(&dir).join(&name);
     if destination_path.exists()
     {
@@ -48,9 +54,12 @@ pub fn add_extern_server(extern_dir: String)
         return;
     }
 
-    if let Some(setup_script) = find_setup_script(&destination_path)
+    if find_start_file(&destination_path).is_none()
     {
-        run_setup_script(&destination_path, &setup_script);
+        if let Some(setup_script) = find_setup_script(&destination_path)
+        {
+            run_setup_script(&destination_path, &setup_script, required_java);
+        }
     }
 
     let start_file = match find_start_file(&destination_path)
@@ -85,27 +94,21 @@ pub fn add_extern_server(extern_dir: String)
         return;
     }
 
-    println!("adding server to list");
-
     make_executable(&destination_path.join(&start_file));
+
+    println!("adding server to list");
 
     let config = load_config();
     let mut list = load_server_list();
     let port = next_available_port(config.port.unwrap_or(25565), &list);
     let rcon_port = next_available_rcon_port(config.rcon_port.unwrap_or(25575), &list);
 
-    let required_java = match find_version_url(&version)
-    {
-        Some(url) => find_required_java_version(&url),
-        None => 17,
-    };
-
     let info = ServerInfo
     {
         name,
         version,
         loader: loader.to_string(),
-        required_java: find_required_java_version(&required_java.to_string()),
+        required_java,
 
         port,
         rcon_port,
@@ -121,18 +124,6 @@ pub fn add_extern_server(extern_dir: String)
     save_server_list(&list);
 }
 
-fn find_start_file(dir: &Path) -> Option<String>
-{
-    for name in KNOWN_LAUNCHERS
-    {
-        if dir.join(name).exists()
-        {
-            return Some(name.to_string());
-        }
-    }
-    None
-}
-
 fn find_setup_script(dir: &Path) -> Option<String>
 {
     let entries = std::fs::read_dir(dir).ok()?;
@@ -142,10 +133,7 @@ fn find_setup_script(dir: &Path) -> Option<String>
         let file_name = entry.file_name();
         let Some(file_name) = file_name.to_str() else { continue; };
 
-        let is_script_or_jar = file_name.ends_with(".sh") || file_name.ends_with(".jar");
-        let is_known_launcher = KNOWN_LAUNCHERS.contains(&file_name);
-
-        if is_script_or_jar && !is_known_launcher
+        if file_name.ends_with(".sh") && !KNOWN_LAUNCHERS.contains(&file_name)
         {
             return Some(file_name.to_string());
         }
@@ -154,25 +142,20 @@ fn find_setup_script(dir: &Path) -> Option<String>
     None
 }
 
-fn run_setup_script(server_path: &Path, script_name: &str)
+fn run_setup_script(server_path: &Path, script_name: &str, required_java: u32)
 {
     let script_path = server_path.join(script_name);
-
-    if !script_path.exists()
-    {
-        println!("'{}' doesn't exist, skipping setup step", script_name);
-        return;
-    }
-
     make_executable(&script_path);
 
-    println!("running setup script...");
-    let mut child = std::process::Command::new(format!("./{}", script_name))
-        .current_dir(server_path)
-        .spawn()
-        .expect("Failed to spawn setup script");
-
     let eula_path = server_path.join("eula.txt");
+    let _ = fs::remove_file(&eula_path);
+
+    println!("running setup script...");
+    let mut cmd = std::process::Command::new(format!("./{}", script_name));
+    cmd.current_dir(server_path);
+    set_java_env(&mut cmd, required_java);
+    let mut child = cmd.spawn().expect("Failed to spawn setup script");
+
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(300);
 
     loop
@@ -201,6 +184,18 @@ fn run_setup_script(server_path: &Path, script_name: &str)
 
         std::thread::sleep(std::time::Duration::from_millis(500));
     }
+}
+
+fn find_start_file(dir: &Path) -> Option<String>
+{
+    for name in KNOWN_LAUNCHERS
+    {
+        if dir.join(name).exists()
+        {
+            return Some(name.to_string());
+        }
+    }
+    None
 }
 
 fn make_executable(path: &Path)

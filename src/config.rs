@@ -322,3 +322,32 @@ pub fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()>
 
     Ok(())
 }
+
+// find java tools
+// set java environment
+
+pub fn find_java_home(major_version: u32) -> Option<String>
+{
+    let entries = std::fs::read_dir("/usr/lib/jvm").ok()?;
+    let prefix = format!("java-{}-", major_version);
+
+    for entry in entries.flatten()
+    {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name.starts_with(&prefix)
+        {
+            return Some(entry.path().to_string_lossy().to_string());
+        }
+    }
+
+    None
+}
+
+pub fn set_java_env(cmd: &mut std::process::Command, required_java: u32)
+{
+    if let Some(home) = find_java_home(required_java)
+    {
+        cmd.env("JAVA_HOME", &home);
+        cmd.env("PATH", format!("{}/bin:{}", home, std::env::var("PATH").unwrap_or_default()));
+    }
+}

@@ -91,7 +91,7 @@ pub fn vanilla(name: String, version: String)
         port: game_port,
         rcon_port,
         rcon_password: config.rcon_password.unwrap_or_else(|| "defaultpassword".to_string()),
-        max_ram_mb: config.max_ram_mb,
+        max_ram_mb: if config.max_ram_mb > 0 { config.max_ram_mb } else { 1024 },
 
         has_been_started: false,
         start_file: "defaultfile".to_string(),

@@ -1,19 +1,17 @@
-use crate::config::{load_config, find_version_url, download_server_jar, get_dir, version_is_greater_than, neoforge_version_getter, find_neoforge_installer_version, find_required_java_version};
+use crate::config::{load_config, find_version_url, get_dir, version_is_greater_than, neoforge_version_getter, find_neoforge_installer_version, find_required_java_version, set_java_env};
 use std::fs;
 use std::io::Write;
-use reqwest::Version;
 
 pub fn neoforge(name: String, version: String)
 {
     if !version_is_greater_than(&version, "1.20.2")
     {
-        println!("Neoforge version {} is not supported, NeoForge is only supported past 1.20.2", version);
+        println!("NeoForge is only supported past 1.20.2, '{}' is too old", version);
         return;
     }
 
-    println!("creating forge server '{}' running Minecraft {}", name, version);
+    println!("creating neoforge server '{}' running Minecraft {}", name, version);
 
-    // Get general server path
     let dir = match get_dir() {
         Some(d) => d,
         None => return,
@@ -23,59 +21,76 @@ pub fn neoforge(name: String, version: String)
     if server_path.exists()
     {
         println!("server '{}' already exists in '{}'", name, dir);
-        failsafe_remove(name, &server_path);
         return;
     }
-    if let Err(e) = fs::create_dir_all(&server_path) {
+    if let Err(e) = fs::create_dir_all(&server_path)
+    {
         println!("failed to create server folder: {}", e);
         return;
     }
 
-    println!("created server folder at '{}'", server_path.display());
-
-    // Getting neoforge version and then making the url for that version for wget
-    println!("getting NeoForge server version...");
-    let installer_url = get_neoforge_version(version.clone());
-    let mut child = std::process::Command::new("wget")
-        .arg(&installer_url.unwrap())
-        .current_dir(&server_path)
-        .spawn()
-        .expect("failed to execute wget");
-
-    child.wait().expect("failed to wait on wget");
-
-    // Getting version
-    let minecraft_prefix = match neoforge_version_getter(&version)
+    let required_java = match find_version_url(&version)
     {
-        Some(v) => format!("{}.", v),
-        None =>
-            {
-                println!("could not determie NeoForge prefect for '{}", version);
-                return;
-            }
+        Some(url) => find_required_java_version(&url),
+        None => 17,
     };
 
-    let neoforge_version = match find_neoforge_installer_version(&minecraft_prefix)
+    println!("getting NeoForge version...");
+    let prefix = match neoforge_version_getter(&version)
     {
-        Some(v) => v,
+        Some(v) => format!("{}.", v),
         None => {
-            println!("couldn't determine NeoForge version for '{}'", version);
+            println!("could not work out the NeoForge version prefix for '{}'", version);
             failsafe_remove(name, &server_path);
             return;
         }
     };
 
-    println!("NeoForge version installed, running installer .jar");
+    let neoforge_version = match find_neoforge_installer_version(&prefix)
+    {
+        Some(v) => v,
+        None => {
+            println!("couldn't find a NeoForge release for '{}'", version);
+            failsafe_remove(name, &server_path);
+            return;
+        }
+    };
 
-    let mut child = std::process::Command::new("java")
+    let installer_name = format!("neoforge-{}-installer.jar", neoforge_version);
+    let installer_url = format!(
+        "https://maven.neoforged.net/releases/net/neoforged/neoforge/{v}/neoforge-{v}-installer.jar",
+        v = neoforge_version
+    );
+
+    println!("downloading {}...", installer_name);
+    let bytes = match reqwest::blocking::get(&installer_url)
+        .and_then(|r| r.error_for_status())
+        .and_then(|r| r.bytes())
+    {
+        Ok(b) => b,
+        Err(e) => {
+            println!("failed to download NeoForge installer: {}", e);
+            failsafe_remove(name, &server_path);
+            return;
+        }
+    };
+
+    if let Err(e) = fs::write(server_path.join(&installer_name), bytes)
+    {
+        println!("failed to save NeoForge installer: {}", e);
+        failsafe_remove(name, &server_path);
+        return;
+    }
+
+    println!("running installer...");
+    let mut installer = std::process::Command::new("java");
+    installer
         .arg("-jar")
-        .arg(format!("neoforge-{}-installer.jar", neoforge_version))
+        .arg(&installer_name)
         .arg("--installServer")
-        .current_dir(&server_path)
-        .spawn()
-        .expect("Failed to spawn neoforge installer");
-
-    child.wait().expect("Failed to wait on neoforge installer");
+        .current_dir(&server_path);
+    set_java_env(&mut installer, required_java);
+    installer.status().expect("Failed to run NeoForge installer");
 
     if !server_path.join("run.sh").exists()
     {
@@ -83,30 +98,21 @@ pub fn neoforge(name: String, version: String)
         failsafe_remove(name, &server_path);
         return;
     }
-    else
-    {
-        println!("neoforge server created successfully at '{}'", server_path.display());
-    }
 
-    // Start server .sh for acepting the eula
-    let mut child = std::process::Command::new("./run.sh")
-        .current_dir(&server_path)
-        .spawn()
-        .expect("Failed to spawn neoforge installer");
+    let mut first_run = std::process::Command::new("./run.sh");
+    first_run.current_dir(&server_path);
+    set_java_env(&mut first_run, required_java);
+    first_run.status().expect("Failed to run run.sh");
 
-    child.wait().expect("failed to wait on neoforge server");
-
-    // EULA acceptance prompt with flish so y/n appears on the same line
     let eula_path = server_path.join("eula.txt");
-    let mut input = String::new();
-
-    if (!eula_path.exists())
+    if !eula_path.exists()
     {
-        println!("neoforge installer failed to create eula");
+        println!("neoforge failed to create eula.txt");
         failsafe_remove(name, &server_path);
         return;
     }
 
+    let mut input = String::new();
     print!("Do you accept the Minecraft EULA? (https://account.mojang.com/documents/minecraft_eula) (y/n): ");
     std::io::stdout().flush().expect("Failed to flush stdout");
     std::io::stdin().read_line(&mut input).expect("Failed to read input");
@@ -118,50 +124,30 @@ pub fn neoforge(name: String, version: String)
         return;
     }
 
-    if let Err(e) = std::fs::write(&eula_path, "eula=true\n")
+    if let Err(e) = fs::write(&eula_path, "eula=true\n")
     {
         println!("failed to write eula.txt: {}", e);
         failsafe_remove(name, &server_path);
         return;
     }
 
-    // Add server_info file
     println!("adding server info...");
     let config = load_config();
     let mut server_list = crate::config::load_server_list();
-    let base_game_port = config.port.unwrap_or(25565);
-    let game_port = crate::config::next_available_port(base_game_port, &server_list);
-    let base_rcon_port = config.rcon_port.unwrap_or(25575);
-    let rcon_port = crate::config::next_available_rcon_port(base_rcon_port, &server_list);
-
-    let max_ram_mb;
-    if config.max_ram_mb > 0
-    {
-        max_ram_mb = config.max_ram_mb;
-    }
-    else
-    {
-        println!("Warning: max_ram_mb is not set in the config. Defaulting to 1024 MB.");
-        max_ram_mb = 1024;
-    };
-
-    let required_java = match find_version_url(&version)
-    {
-        Some(url) => find_required_java_version(&url),
-        None => 17,
-    };
+    let port = crate::config::next_available_port(config.port.unwrap_or(25565), &server_list);
+    let rcon_port = crate::config::next_available_rcon_port(config.rcon_port.unwrap_or(25575), &server_list);
 
     let server_info = crate::config::ServerInfo
     {
         name: name.clone(),
         version: version.clone(),
         loader: "NeoForge".to_string(),
-        required_java: find_required_java_version(&required_java.to_string()),
+        required_java,
 
-        port: game_port,
+        port,
         rcon_port,
         rcon_password: config.rcon_password.unwrap_or_else(|| "defaultpassword".to_string()),
-        max_ram_mb: max_ram_mb,
+        max_ram_mb: if config.max_ram_mb > 0 { config.max_ram_mb } else { 1024 },
 
         has_been_started: false,
         start_file: "defaultfile".to_string(),

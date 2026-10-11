@@ -1,6 +1,6 @@
 use std::env::current_dir;
 use std::fmt::format;
-use crate::config::get_dir;
+use crate::config::{get_dir, find_java_home, set_java_env};
 use std::process::Stdio;
 use clap::Command;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -10,7 +10,7 @@ use crossterm::execute;
 use futures::StreamExt;
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::{Block, Borders, Paragraph}, layout::{Layout, Direction, Constraint}};
 use sysinfo::{ProcessesToUpdate, System, Pid};
-use super::start::{ensure_server_initialized, find_java_home};
+use super::start::{ensure_server_initialized, first_time_server_properties};
 
 pub async fn start_gui(name: String)
 {
@@ -45,6 +45,7 @@ pub async fn start_gui(name: String)
     let path_clone = server_path.clone();
     tokio::task::spawn_blocking(move || {
         ensure_server_initialized(&name_clone, &path_clone);
+        first_time_server_properties(&name_clone, &path_clone);
     }).await.expect("first-time setup task panicked");
 
     let mut cmd = match start_async_server(name).await {
@@ -118,17 +119,22 @@ async fn run_gui_loop
     let mut stats_timer = tokio::time::interval(std::time::Duration::from_secs(1));
     let mut input_buffer = String::new();
 
+    let mut stdout_done = false;
+    let mut stderr_done = false;
+
     loop {
         tokio::select! {
-            line = lines.next_line() => {
-                if let Ok(Some(line)) = line {
-                    log_lines.push(line);
+            line = lines.next_line(), if !stdout_done => {
+                match line {
+                    Ok(Some(line)) => log_lines.push(line),
+                    _ => stdout_done = true,
                 }
             }
 
-            line = err_lines.next_line() => {
-                if let Ok(Some(line)) = line {
-                    log_lines.push(format!("[warn] {}", line));
+            line = err_lines.next_line(), if !stderr_done => {
+                match line {
+                    Ok(Some(line)) => log_lines.push(format!("[warn] {}", line)),
+                    _ => stderr_done = true,
                 }
             }
 
@@ -144,32 +150,33 @@ async fn run_gui_loop
                 if let Some(Ok(Event::Key(key))) = event {
                     match key.code
                     {
-                        KeyCode::Char('q') =>
+                        KeyCode::Char('q') if input_buffer.is_empty() =>
                         {
-                            stdin.write_all(&b"stop\n"[..]).await.expect("failed to write to stdin");
+                            if let Ok(None) = child.try_wait()
+                            {
+                                let _ = stdin.write_all(&b"stop\n"[..]).await;
+                            }
 
                             let shutdown = tokio::time::timeout(
-                                std::time::Duration::from_secs(10),
+                                std::time::Duration::from_secs(120),
                                 async {
                                     let mut child_exited = false;
-                                    let mut stdout_closed = false;
-                                    let mut stderr_closed = false;
 
-                                    while !child_exited || !stdout_closed || !stderr_closed {
+                                    while !child_exited || !stdout_done || !stderr_done {
                                         tokio::select! {
                                             result = child.wait(), if !child_exited => {
                                                 child_exited = result.is_ok();
                                             }
-                                            line = lines.next_line(), if !stdout_closed => {
+                                            line = lines.next_line(), if !stdout_done => {
                                                 match line {
                                                     Ok(Some(line)) => log_lines.push(line),
-                                                    _ => stdout_closed = true,
+                                                    _ => stdout_done = true,
                                                 }
                                             }
-                                            line = err_lines.next_line(), if !stderr_closed => {
+                                            line = err_lines.next_line(), if !stderr_done => {
                                                 match line {
                                                     Ok(Some(line)) => log_lines.push(format!("[warn] {}", line)),
-                                                    _ => stderr_closed = true,
+                                                    _ => stderr_done = true,
                                                 }
                                             }
                                         }
@@ -184,7 +191,6 @@ async fn run_gui_loop
                             ).await;
 
                             if shutdown.is_err() {
-                                eprintln!("server did not finish shutting down after 10 seconds; terminating it");
                                 let _ = child.kill().await;
                                 let _ = child.wait().await;
                             }
@@ -211,7 +217,7 @@ async fn run_gui_loop
                         {
                             if !input_buffer.is_empty() {
                                 let command_line = format!("{}\n", input_buffer);
-                                stdin.write_all(command_line.as_bytes()).await.expect("failed to write to stdin");
+                                let _ = stdin.write_all(command_line.as_bytes()).await;
                                 log_lines.push(format!("> {}", input_buffer));
                                 input_buffer.clear();
                             }
